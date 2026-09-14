@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Performance Dashboard — ABC Vietnam</title>
+<style>
+  :root {
+    color-scheme: light;
+    /* Brand chrome: dark green + beige (ABC Vietnam) */
+    --brand-dark:      #1f3d2b;
+    --brand-dark-2:    #2b5039;
+    --brand-accent:    #3a6b4a;
+    --page-plane:      #f6f3ea;   /* beige */
+    --surface-1:       #fffdf7;
+    --text-primary:    #17231b;
+    --text-secondary:  #52514e;
+    --muted:           #898781;
+    --gridline:        #e5e1d3;
+    --baseline:        #c9c4ab;
+    --border:          rgba(11,11,11,0.10);
+    --good:            #0ca30c;
+    --critical:        #d03b3b;
+    /* Validated categorical slots (dataviz skill reference palette) */
+    --series-reach:     #2a78d6; /* blue */
+    --series-engage:    #1baf7a; /* aqua */
+    --series-msg:       #eb6834; /* orange */
+    --series-spend:     #4a3aa7; /* violet */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --brand-dark:      #14261a;
+      --brand-dark-2:    #1c3626;
+      --brand-accent:    #4c8360;
+      --page-plane:      #0d0d0c;
+      --surface-1:       #1a1a19;
+      --text-primary:    #ffffff;
+      --text-secondary:  #c3c2b7;
+      --muted:           #898781;
+      --gridline:        #2c2c2a;
+      --baseline:        #383835;
+      --border:          rgba(255,255,255,0.10);
+      --good:            #0ca30c;
+      --critical:        #e66767;
+      --series-reach:    #3987e5;
+      --series-engage:   #199e70;
+      --series-msg:      #d95926;
+      --series-spend:    #9085e9;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --brand-dark:      #14261a;
+    --brand-dark-2:    #1c3626;
+    --brand-accent:    #4c8360;
+    --page-plane:      #0d0d0c;
+    --surface-1:       #1a1a19;
+    --text-primary:    #ffffff;
+    --text-secondary:  #c3c2b7;
+    --muted:           #898781;
+    --gridline:        #2c2c2a;
+    --baseline:        #383835;
+    --border:          rgba(255,255,255,0.10);
+    --good:            #0ca30c;
+    --critical:        #e66767;
+    --series-reach:    #3987e5;
+    --series-engage:   #199e70;
+    --series-msg:      #d95926;
+    --series-spend:    #9085e9;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { padding: 0 16px 48px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  /* ---------- Setup screen ---------- */
+  #setup {
+    max-width: 560px; margin: 48px auto; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 12px; padding: 28px;
+  }
+  #setup h1 { font-size: 20px; margin: 0 0 6px; }
+  #setup p.sub { color: var(--text-secondary); font-size: 14px; margin: 0 0 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+  .field input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--page-plane); color: var(--text-primary); font-size: 14px;
+  }
+  .field .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .btn {
+    background: var(--brand-dark); color: #fff; border: none; padding: 10px 18px;
+    border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .btn:hover { background: var(--brand-dark-2); }
+  .btn.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  #setupError { color: var(--critical); font-size: 13px; margin-top: 10px; display: none; }
+
+  /* ---------- Header / page switcher ---------- */
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 18px 0 14px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand-accent); }
+  .brand h1 { font-size: 17px; margin: 0; }
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  select, .icon-btn {
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+  }
+  .range-label { font-size: 12px; color: var(--muted); }
+  #statusLine { font-size: 12px; color: var(--muted); margin-bottom: 10px; min-height: 16px; }
+  #statusLine.err { color: var(--critical); }
+
+  /* ---------- KPI row ---------- */
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .kpi-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .kpi-card .value { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .kpi-card .delta { font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .kpi-card .delta.good { color: var(--good); }
+  .kpi-card .delta.bad { color: var(--critical); }
+  .kpi-card .delta.flat { color: var(--muted); }
+
+  /* ---------- Trend charts (small multiples) ---------- */
+  .section-title { font-size: 14px; font-weight: 700; margin: 26px 0 10px; }
+  .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 900px) { .chart-row { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 14px 8px;
+  }
+  .chart-card .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .chart-card .chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .bar { fill: var(--series-reach); }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .baseline { stroke: var(--baseline); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 9px; font-family: system-ui, sans-serif; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--brand-dark); color: #fff;
+    font-size: 11px; padding: 5px 8px; border-radius: 6px; opacity: 0; transition: opacity .08s;
+    white-space: nowrap; z-index: 10;
+  }
+
+  /* ---------- Tables ---------- */
+  .table-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 900px) { .table-row { grid-template-columns: 1fr; } }
+  .table-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; overflow-x: auto;
+  }
+  .table-card .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--gridline); }
+  th { color: var(--text-secondary); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.msg-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty-note { color: var(--muted); font-size: 12.5px; padding: 10px 0; }
+
+  footer.foot { margin-top: 34px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  footer.foot a { color: var(--brand-accent); }
+
+  #loadingOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.15); display: none;
+    align-items: center; justify-content: center; z-index: 50;
+  }
+  #loadingOverlay .box {
+    background: var(--surface-1); border-radius: 10px; padding: 16px 22px; font-size: 13px;
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <h1>Social Performance Dashboard</h1>
+  <p class="sub">Nhập Access Token và Ad Account ID lấy từ Bước 1 (Graph API Explorer + Ads Manager). Dữ liệu chỉ lưu trong trình duyệt của bạn, không gửi đi đâu khác.</p>
+  <div class="field">
+    <label for="inToken">Access Token (User Token)</label>
+    <input id="inToken" type="password" placeholder="EAAxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    <div class="hint">Lấy ở Graph API Explorer &rarr; khung "Mã truy cập".</div>
+  </div>
+  <div class="field">
+    <label for="inAdAccount">Ad Account ID</label>
+    <input id="inAdAccount" type="text" placeholder="act_1234567890" autocomplete="off">
+    <div class="hint">Dạng act_xxxxxxxxxx, lấy trong Ads Manager.</div>
+  </div>
+  <button class="btn" onclick="startApp()">Kết nối &amp; tải dashboard</button>
+  <div id="setupError"></div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span><h1>Social Performance — <span id="pageNameLabel">…</span></h1></div>
+    <div class="controls">
+      <select id="pageSelect"></select>
+      <span class="range-label" id="rangeLabel"></span>
+      <button class="icon-btn" onclick="refreshAll()">&#x21bb; Làm mới</button>
+      <button class="icon-btn" onclick="resetConfig()">Đổi token</button>
+    </div>
+  </header>
+  <div id="statusLine"></div>
+
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <div class="section-title">Xu hướng 30 ngày gần nhất</div>
+  <div class="chart-row" id="chartRow"></div>
+
+  <div class="section-title">Chi tiết</div>
+  <div class="table-row">
+    <div class="table-card">
+      <div class="chart-title">Bài đăng — Reach cao nhất (organic)</div>
+      <div id="postsTable"></div>
+    </div>
+    <div class="table-card">
+      <div class="chart-title">Chiến dịch quảng cáo (theo Cost / Message)</div>
+      <div id="campaignsTable"></div>
+    </div>
+  </div>
+
+  <footer class="foot">Dữ liệu lấy trực tiếp từ trình duyệt của bạn qua Facebook Graph API &amp; Marketing API. Token không được lưu trên máy chủ nào.</footer>
+</div>
+
+<div id="loadingOverlay"><div class="box">Đang tải số liệu…</div></div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+/* ============================================================
+   CONFIG / STORAGE
+   ============================================================ */
+const LS_KEY = 'fb_dash_cfg_v1';
+const API_VERSION = 'v21.0';
+let CFG = null;          // { token, adAccountId }
+let PAGES = [];          // [{id,name,access_token,category}]
+let CURRENT_PAGE = null; // selected page object
+
+function loadCfg() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); }
+  catch (e) { return null; }
+}
+function saveCfg(cfg) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) {}
+}
+function resetConfig() {
+  if (!confirm('Xoá token đã lưu trên trình duyệt này và nhập lại?')) return;
+  localStorage.removeItem(LS_KEY);
+  location.reload();
+}
+
+/* ============================================================
+   FACEBOOK API HELPERS
+   ============================================================ */
+async function fbGet(path, params, token) {
+  const url = new URL(`https://graph.facebook.com/${API_VERSION}/${path}`);
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) url.searchParams.set(k, v);
+  });
+  url.searchParams.set('access_token', token);
+  const res = await fetch(url.toString());
+  const json = await res.json();
+  if (json.error) {
+    const e = new Error(json.error.message || 'Facebook API error');
+    e.fbError = json.error;
+    throw e;
+  }
+  return json;
+}
+
+function fmtDate(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
+/* ============================================================
+   BOOTSTRAP
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  CFG = loadCfg();
+  if (CFG && CFG.token && CFG.adAccountId) {
+    document.getElementById('setup').hidden = true;
+    document.getElementById('app').hidden = false;
+    initApp();
+  }
+});
+
+async function startApp() {
+  const token = document.getElementById('inToken').value.trim();
+  const adAccountRaw = document.getElementById('inAdAccount').value.trim();
+  const errBox = document.getElementById('setupError');
+  errBox.style.display = 'none';
+  if (!token || !adAccountRaw) {
+    errBox.textContent = 'Vui lòng nhập đủ Access Token và Ad Account ID.';
+    errBox.style.display = 'block';
+    return;
+  }
+  const adAccountId = adAccountRaw.startsWith('act_') ? adAccountRaw : `act_${adAccountRaw}`;
+
+  showLoading(true);
+  try {
+    // Validate token quickly
+    await fbGet('me', { fields: 'id,name' }, token);
+  } catch (e) {
+    showLoading(false);
+    errBox.textContent = 'Token không hợp lệ hoặc đã hết hạn: ' + (e.fbError?.message || e.message) +
+      ' — quay lại Graph API Explorer bấm "Generate Access Token" lại rồi dán token mới.';
+    errBox.style.display = 'block';
+    return;
+  }
+  showLoading(false);
+  CFG = { token, adAccountId };
+  saveCfg(CFG);
+  document.getElementById('setup').hidden = true;
+  document.getElementById('app').hidden = false;
+  initApp();
+}
+
+function showLoading(v) {
+  document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
+}
+function setStatus(msg, isErr) {
+  const el = document.getElementById('statusLine');
+  el.textContent = msg || '';
+  el.className = isErr ? 'err' : '';
+}
+
+/* ============================================================
+   APP INIT — load page list, wire switcher
+   ============================================================ */
+async function initApp() {
+  showLoading(true);
+  setStatus('Đang tải danh sách Page…');
+  try {
+    const data = await fbGet('me/accounts', { fields: 'id,name,access_token,category', limit: 200 }, CFG.token);
+    PAGES = dedupePages(data.data || []);
+    if (!PAGES.length) {
+      setStatus('Token này chưa được cấp quyền admin cho Page nào. Kiểm tra lại quyền pages_show_list.', true);
+      showLoading(false);
+      return;
+    }
+    const sel = document.getElementById('pageSelect');
+    sel.innerHTML = PAGES.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    sel.onchange = () => loadPage(sel.value);
+    loadPage(PAGES[0].id);
+  } catch (e) {
+    setStatus('Lỗi tải danh sách Page: ' + (e.fbError?.message || e.message), true);
+    showLoading(false);
+  }
+}
+
+// Cleaning: Facebook can occasionally list the same page id twice (shared access) — keep first occurrence.
+function dedupePages(list) {
+  const seen = new Set();
+  const out = [];
+  for (const p of list) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    out.push(p);
+  }
+  return out;
+}
+
+async function loadPage(pageId) {
+  CURRENT_PAGE = PAGES.find(p => p.id === pageId);
+  document.getElementById('pageNameLabel').textContent = CURRENT_PAGE.name;
+  document.getElementById('pageSelect').value = pageId;
+  await refreshAll();
+}
+
+async function refreshAll() {
+  if (!CURRENT_PAGE) return;
+  showLoading(true);
+  setStatus('Đang tải số liệu cho "' + CURRENT_PAGE.name + '"…');
+
+  const until = new Date();
+  const since = daysAgo(30);
+  const prevUntil = daysAgo(31);
+  const prevSince = daysAgo(60);
+  document.getElementById('rangeLabel').textContent =
+    `${fmtDate(since)} → ${fmtDate(until)} (so với ${fmtDate(prevSince)} → ${fmtDate(prevUntil)})`;
+
+  try {
+    const [organicCur, organicPrev, posts, ads] = await Promise.all([
+      loadOrganicSeries(CURRENT_PAGE, since, until).catch(err => ({ error: err })),
+      loadOrganicSeries(CURRENT_PAGE, prevSince, prevUntil).catch(err => ({ error: err })),
+      loadTopPosts(CURRENT_PAGE, since, until).catch(err => ({ error: err })),
+      loadAdsData(since, until).catch(err => ({ error: err })),
+    ]);
+
+    renderKPIs(organicCur, organicPrev, ads);
+    renderCharts(organicCur, ads);
+    renderPostsTable(posts);
+    renderCampaignsTable(ads);
+
+    const problems = [organicCur, organicPrev, posts, ads].filter(x => x && x.error);
+    if (problems.length) {
+      setStatus('Một số dữ liệu không tải được — xem chi tiết trong Console (F12). Ví dụ: ' +
+        (problems[0].error.fbError?.message || problems[0].error.message), true);
+    } else {
+      setStatus('Cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN'));
+    }
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ============================================================
+   ORGANIC (Page Insights) — daily series
+   ============================================================ */
+async function loadOrganicSeries(page, since, until) {
+  // page_impressions_unique ~= organic reach, page_post_engagements ~= engagement
+  const metrics = 'page_impressions_unique,page_post_engagements';
+  const data = await fbGet(`${page.id}/insights`, {
+    metric: metrics,
+    period: 'day',
+    since: fmtDate(since),
+    until: fmtDate(until),
+  }, page.access_token);
+
+  const series = { reach: {}, engagement: {} };
+  (data.data || []).forEach(m => {
+    const bucket = m.name === 'page_impressions_unique' ? series.reach
+                 : m.name === 'page_post_engagements' ? series.engagement
+                 : null;
+    if (!bucket) return;
+    (m.values || []).forEach(v => {
+      const d = (v.end_time || '').slice(0, 10);
+      if (!d) return;
+      bucket[d] = (bucket[d] || 0) + (Number(v.value) || 0);
+    });
+  });
+  return series;
+}
+
+function seriesTotal(seriesObj) {
+  return Object.values(seriesObj || {}).reduce((a, b) => a + b, 0);
+}
+
+/* ============================================================
+   TOP POSTS (organic detail table)
+   ============================================================ */
+async function loadTopPosts(page, since, until) {
+  const data = await fbGet(`${page.id}/posts`, {
+    fields: 'id,message,created_time,insights.metric(post_impressions_unique,post_engaged_users,post_clicks)',
+    since: fmtDate(since),
+    until: fmtDate(until),
+    limit: 50,
+  }, page.access_token);
+
+  const rows = (data.data || []).map(post => {
+    const ins = {};
+    (post.insights?.data || []).forEach(m => { ins[m.name] = m.values?.[0]?.value ?? 0; });
+    return {
+      id: post.id,
+      message: (post.message || '(Không có nội dung văn bản)').slice(0, 140),
+      date: (post.created_time || '').slice(0, 10),
+      reach: Number(ins.post_impressions_unique) || 0,
+      engaged: Number(ins.post_engaged_users) || 0,
+      clicks: Number(ins.post_clicks) || 0,
+    };
+  });
+  rows.sort((a, b) => b.reach - a.reach);
+  return rows.slice(0, 10);
+}
+
+/* ============================================================
+   ADS (Marketing API) — account-level campaign insights
+   Note: not filtered per-Page — Ad Account may serve multiple pages/products.
+   ============================================================ */
+const MESSAGE_ACTION_TYPES = [
+  'onsite_conversion.messaging_conversation_started_7d',
+  'onsite_conversion.total_messaging_connection',
+  'messaging_conversation_started_7d',
+];
+
+async function loadAdsData(since, until) {
+  const data = await fbGet(`${CFG.adAccountId}/insights`, {
+    level: 'campaign',
+    fields: 'campaign_id,campaign_name,spend,actions,cpc,ctr,impressions,clicks',
+    time_range: JSON.stringify({ since: fmtDate(since), until: fmtDate(until) }),
+    limit: 200,
+  }, CFG.token);
+
+  const campaigns = (data.data || []).map(c => {
+    const actions = c.actions || [];
+    let messages = 0;
+    for (const t of MESSAGE_ACTION_TYPES) {
+      const hit = actions.find(a => a.action_type === t);
+      if (hit) { messages = Number(hit.value) || 0; break; }
+    }
+    const spend = Number(c.spend) || 0;
+    return {
+      id: c.campaign_id,
+      name: c.campaign_name,
+      spend,
+      messages,
+      costPerMessage: messages > 0 ? spend / messages : null,
+      ctr: Number(c.ctr) || 0,
+      clicks: Number(c.clicks) || 0,
+    };
+  });
+  const totalSpend = campaigns.reduce((a, c) => a + c.spend, 0);
+  const totalMessages = campaigns.reduce((a, c) => a + c.messages, 0);
+  campaigns.sort((a, b) => (a.costPerMessage ?? Infinity) - (b.costPerMessage ?? Infinity));
+  return { campaigns, totalSpend, totalMessages };
+}
+
+/* ============================================================
+   RENDER — KPI cards
+   ============================================================ */
+function pctDelta(cur, prev) {
+  if (!prev) return null;
+  return ((cur - prev) / prev) * 100;
+}
+function fmtNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return Math.round(n).toLocaleString('vi-VN');
+}
+function fmtVnd(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Math.round(n).toLocaleString('vi-VN') + '₫';
+}
+function deltaHtml(pct) {
+  if (pct === null || !isFinite(pct)) return `<span class="delta flat">— so với kỳ trước</span>`;
+  const cls = pct > 0.5 ? 'good' : pct < -0.5 ? 'bad' : 'flat';
+  const arrow = pct > 0.5 ? '▲' : pct < -0.5 ? '▼' : '→';
+  return `<span class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(1)}% so với kỳ trước</span>`;
+}
+
+function renderKPIs(cur, prev, ads) {
+  const reachCur = cur?.error ? null : seriesTotal(cur.reach);
+  const reachPrev = prev?.error ? null : seriesTotal(prev.reach);
+  const engCur = cur?.error ? null : seriesTotal(cur.engagement);
+  const engPrev = prev?.error ? null : seriesTotal(prev.engagement);
+  const spend = ads?.error ? null : ads.totalSpend;
+  const messages = ads?.error ? null : ads.totalMessages;
+  const cpm = (spend != null && messages) ? spend / messages : null;
+
+  const cards = [
+    { label: 'Tổng Reach (organic)', value: fmtNum(reachCur), delta: deltaHtml(pctDelta(reachCur, reachPrev)) },
+    { label: 'Tổng Engagement (organic)', value: fmtNum(engCur), delta: deltaHtml(pctDelta(engCur, engPrev)) },
+    { label: 'Chi phí Ads (30 ngày)', value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
+    { label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
+    { label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình 30 ngày</span>` },
+  ];
+  document.getElementById('kpiRow').innerHTML = cards.map(c => `
+    <div class="kpi-card">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      ${c.delta}
+    </div>`).join('');
+}
+
+/* ============================================================
+   RENDER — small-multiple bar charts (SVG)
+   ============================================================ */
+function renderCharts(organicCur, ads) {
+  const reachSeries = organicCur?.error ? {} : organicCur.reach;
+  const engSeries = organicCur?.error ? {} : organicCur.engagement;
+  const msgSeries = buildAdsDailySeries(ads);
+
+  const row = document.getElementById('chartRow');
+  row.innerHTML = '';
+  row.appendChild(barChartCard('Reach hàng ngày (organic)', reachSeries, 'var(--series-reach)'));
+  row.appendChild(barChartCard('Engagement hàng ngày (organic)', engSeries, 'var(--series-engage)'));
+  row.appendChild(barChartCard('Messages Started / ngày (ước tính)', msgSeries, 'var(--series-msg)', true));
+}
+
+// Ads Insights (level=campaign, no time increment) doesn't give a daily breakdown in loadAdsData;
+// approximate a flat daily average line so the chart still communicates the 30-day total context.
+function buildAdsDailySeries(ads) {
+  if (!ads || ads.error) return {};
+  const days = 30;
+  const perDay = (ads.totalMessages || 0) / days;
+  const out = {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = fmtDate(daysAgo(i));
+    out[d] = perDay;
+  }
+  return out;
+}
+
+function barChartCard(title, seriesObj, color, isApprox) {
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-card';
+  const dates = Object.keys(seriesObj).sort();
+  const values = dates.map(d => seriesObj[d]);
+  const max = Math.max(1, ...values);
+  const W = 340, H = 140, padL = 30, padB = 18, padT = 6, padR = 6;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const barGap = 2;
+  const barW = dates.length ? Math.max(1, plotW / dates.length - barGap) : 0;
+
+  let bars = '';
+  dates.forEach((d, i) => {
+    const v = values[i];
+    const h = max ? (v / max) * plotH : 0;
+    const x = padL + i * (barW + barGap);
+    const y = padT + (plotH - h);
+    bars += `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" rx="2" ry="2" fill="${color}" data-date="${d}" data-val="${v}"></rect>`;
+  });
+
+  // gridlines (3 horizontal)
+  let grid = '';
+  for (let g = 1; g <= 3; g++) {
+    const y = padT + plotH * (g / 4);
+    grid += `<line class="gridline" x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"></line>`;
+  }
+  const baseline = `<line class="baseline" x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}"></line>`;
+
+  // sparse x labels: first, middle, last
+  let labels = '';
+  if (dates.length) {
+    const idxs = [0, Math.floor(dates.length / 2), dates.length - 1];
+    idxs.forEach(i => {
+      const x = padL + i * (barW + barGap) + barW / 2;
+      const label = dates[i].slice(5); // MM-DD
+      labels += `<text class="axis-label" x="${x.toFixed(1)}" y="${H - 4}" text-anchor="middle">${label}</text>`;
+    });
+  }
+
+  wrap.innerHTML = `
+    <div class="chart-title">${title}</div>
+    <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : '30 ngày gần nhất'}</div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${grid}${bars}${baseline}${labels}</svg>
+  `;
+
+  const svg = wrap.querySelector('svg');
+  const tooltip = document.getElementById('tooltip');
+  svg.querySelectorAll('.bar').forEach(rect => {
+    rect.addEventListener('mousemove', (e) => {
+      tooltip.style.opacity = '1';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+      tooltip.textContent = `${rect.dataset.date}: ${fmtNum(Number(rect.dataset.val))}`;
+    });
+    rect.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  });
+
+  return wrap;
+}
+
+/* ============================================================
+   RENDER — Tables
+   ============================================================ */
+function renderPostsTable(posts) {
+  const el = document.getElementById('postsTable');
+  if (!posts || posts.error) {
+    el.innerHTML = `<div class="empty-note">Không tải được danh sách bài đăng: ${escapeHtml(posts?.error?.fbError?.message || posts?.error?.message || '')}</div>`;
+    return;
+  }
+  if (!posts.length) { el.innerHTML = `<div class="empty-note">Chưa có bài đăng nào trong khoảng thời gian này.</div>`; return; }
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Ngày</th><th>Nội dung</th><th class="num">Reach</th><th class="num">Engaged</th><th class="num">Clicks</th></tr></thead>
+      <tbody>
+        ${posts.map(p => `<tr>
+          <td>${p.date}</td>
+          <td class="msg-cell" title="${escapeHtml(p.message)}">${escapeHtml(p.message)}</td>
+          <td class="num">${fmtNum(p.reach)}</td>
+          <td class="num">${fmtNum(p.engaged)}</td>
+          <td class="num">${fmtNum(p.clicks)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderCampaignsTable(ads) {
+  const el = document.getElementById('campaignsTable');
+  if (!ads || ads.error) {
+    el.innerHTML = `<div class="empty-note">Không tải được dữ liệu quảng cáo: ${escapeHtml(ads?.error?.fbError?.message || ads?.error?.message || '')}</div>`;
+    return;
+  }
+  if (!ads.campaigns.length) { el.innerHTML = `<div class="empty-note">Không có chiến dịch nào trong khoảng thời gian này.</div>`; return; }
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Chiến dịch</th><th class="num">Chi phí</th><th class="num">Messages</th><th class="num">Cost/Msg</th><th class="num">CTR</th></tr></thead>
+      <tbody>
+        ${ads.campaigns.map(c => `<tr>
+          <td>${escapeHtml(c.name)}</td>
+          <td class="num">${fmtVnd(c.spend)}</td>
+          <td class="num">${fmtNum(c.messages)}</td>
+          <td class="num">${c.costPerMessage != null ? fmtVnd(c.costPerMessage) : '—'}</td>
+          <td class="num">${(c.ctr || 0).toFixed(2)}%</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
