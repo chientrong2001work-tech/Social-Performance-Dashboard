@@ -794,33 +794,33 @@ function seriesTotal(seriesObj) {
    TOP POSTS (organic detail table)
    ============================================================ */
 async function loadPostsForRange(page, since, until) {
-  // Facebook liên tục khai tử metric Insights cũ → thử bộ metric mới nhất trước, rồi rút gọn
-  // dần nếu bị lỗi, để danh sách bài đăng vẫn hiện ra thay vì trắng trơn.
-  const METRIC_SETS = [
-    'post_total_media_view,post_total_media_view_unique,post_engaged_users,post_clicks',
-    'post_impressions,post_impressions_unique,post_engaged_users,post_clicks',
-    'post_engaged_users,post_clicks',
-  ];
+  // Đã xác nhận trực tiếp qua Graph API Explorer (2026-09-14): post_media_view, post_total_media_view_unique
+  // và post_clicks đều còn trả dữ liệu thật theo từng bài đăng — nhưng khi gộp quá nhiều metric (kèm
+  // post_activity_by_action_type_unique) vào 1 lệnh insights.metric(...) thì kết quả bị cắt bớt.
+  // Vì vậy tách làm 2 lượt gọi song song (Views+Reach riêng, Clicks riêng) rồi ghép lại theo post id —
+  // mỗi lượt dùng đúng tổ hợp đã kiểm chứng hoạt động.
+  const commonParams = { since: fmtDate(since), until: fmtDate(until), limit: 100 };
 
-  let data = null;
-  let lastErr = null;
-  for (const metrics of METRIC_SETS) {
-    try {
-      data = await fbGet(`${page.id}/posts`, {
-        fields: `id,message,created_time,attachments{media_type},insights.metric(${metrics}).period(lifetime)`,
-        since: fmtDate(since),
-        until: fmtDate(until),
-        limit: 100,
-      }, page.access_token);
-      break;
-    } catch (err) {
-      lastErr = err;
-      data = null;
-    }
+  const [baseData, clicksData] = await Promise.all([
+    fbGet(`${page.id}/posts`, {
+      fields: 'id,message,created_time,attachments{media_type},insights.metric(post_media_view,post_total_media_view_unique)',
+      ...commonParams,
+    }, page.access_token),
+    fbGet(`${page.id}/posts`, {
+      fields: 'id,insights.metric(post_clicks)',
+      ...commonParams,
+    }, page.access_token).catch(() => null), // Clicks là phụ — nếu lượt này lỗi vẫn giữ được Views/Reach
+  ]);
+
+  const clicksById = {};
+  if (clicksData) {
+    (clicksData.data || []).forEach(post => {
+      const row = (post.insights?.data || []).find(m => m.name === 'post_clicks');
+      if (row) clicksById[post.id] = Number(row.values?.[0]?.value) || 0;
+    });
   }
-  if (!data) throw lastErr || new Error('Không tải được danh sách bài đăng.');
 
-  return (data.data || []).map(post => {
+  return (baseData.data || []).map(post => {
     const ins = {};
     (post.insights?.data || []).forEach(m => { ins[m.name] = m.values?.[0]?.value ?? 0; });
     return {
@@ -829,10 +829,10 @@ async function loadPostsForRange(page, since, until) {
       date: (post.created_time || '').slice(0, 10),
       createdAt: post.created_time || '',
       mediaType: post.attachments?.data?.[0]?.media_type || 'status',
-      views: Number(ins.post_total_media_view ?? ins.post_impressions) || 0,
-      reach: Number(ins.post_total_media_view_unique ?? ins.post_impressions_unique) || 0,
-      engaged: Number(ins.post_engaged_users) || 0,
-      clicks: Number(ins.post_clicks) || 0,
+      views: Number(ins.post_media_view) || 0,
+      reach: Number(ins.post_total_media_view_unique) || 0,
+      engaged: null,
+      clicks: Object.prototype.hasOwnProperty.call(clicksById, post.id) ? clicksById[post.id] : null,
     };
   });
 }
@@ -847,8 +847,12 @@ const MEDIA_TYPE_LABELS = { photo: 'Ảnh', video: 'Video', album: 'Album', shar
 
 function aggregatePosts(posts) {
   const totalViews = posts.reduce((s, p) => s + p.views, 0);
-  const totalClicks = posts.reduce((s, p) => s + p.clicks, 0);
-  const totalEngagedFromPosts = posts.reduce((s, p) => s + p.engaged, 0);
+  // Clicks/Engaged theo bài đăng hiện không có qua API (xem ghi chú trong loadPostsForRange) —
+  // giữ là null để phân biệt với "bằng 0", thay vì hiển thị số liệu sai.
+  const hasClicks = posts.some(p => p.clicks != null);
+  const hasEngaged = posts.some(p => p.engaged != null);
+  const totalClicks = hasClicks ? posts.reduce((s, p) => s + (p.clicks || 0), 0) : null;
+  const totalEngagedFromPosts = hasEngaged ? posts.reduce((s, p) => s + (p.engaged || 0), 0) : null;
 
   const dailyViews = {};
   posts.forEach(p => { if (p.date) dailyViews[p.date] = (dailyViews[p.date] || 0) + p.views; });
@@ -880,21 +884,20 @@ function aggregatePosts(posts) {
   const typeBuckets = {};
   posts.forEach(p => {
     const t = p.mediaType || 'status';
-    typeBuckets[t] = typeBuckets[t] || { views: 0, engaged: 0, reach: 0, count: 0 };
-    typeBuckets[t].views += p.views; typeBuckets[t].engaged += p.engaged;
+    typeBuckets[t] = typeBuckets[t] || { views: 0, reach: 0, count: 0 };
+    typeBuckets[t].views += p.views;
     typeBuckets[t].reach += p.reach; typeBuckets[t].count++;
   });
   const typeRows = Object.entries(typeBuckets).map(([type, v]) => ({
     type: MEDIA_TYPE_LABELS[type] || type,
     avgViews: v.count ? v.views / v.count : 0,
-    engRate: v.reach ? (v.engaged / v.reach * 100) : 0,
     count: v.count,
   })).sort((a, b) => b.avgViews - a.avgViews);
 
   const videoLikeCount = posts.filter(p => p.mediaType === 'video' || p.mediaType === 'reel').length;
 
   const totalReachFromPosts = posts.reduce((s, p) => s + p.reach, 0);
-  const engRate = totalReachFromPosts ? (totalEngagedFromPosts / totalReachFromPosts * 100) : null;
+  const engRate = (hasEngaged && totalReachFromPosts) ? (totalEngagedFromPosts / totalReachFromPosts * 100) : null;
   const topPost = posts.length ? posts.reduce((best, p) => (!best || p.views > best.views) ? p : best, null) : null;
   const postCount = posts.length;
 
@@ -989,8 +992,8 @@ function renderKPIs(cur, prev, ads, agg) {
     { label: 'Tổng Reach (organic)', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
     { label: 'Tổng Engagement (organic)', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
     { label: 'Tổng Views (bài đăng)', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
-    { label: 'Tổng Clicks (bài đăng)', value: agg ? fmtNum(agg.totalClicks) : '—', delta: `<span class="delta flat">Trên bài đăng</span>` },
-    { label: 'Eng. Rate (bài đăng)', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: `<span class="delta flat">Engaged / Reach</span>` },
+    { label: 'Tổng Clicks (bài đăng)', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>` },
+    { label: 'Eng. Rate (bài đăng)', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: (agg && agg.engRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>` },
     { label: 'Bài track', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong 30 ngày</span>` },
     { label: 'Chi phí Ads (30 ngày)', value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
     { label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
@@ -1221,13 +1224,17 @@ function renderFunnel(agg) {
     el.innerHTML = `<div class="empty-note">Chưa có đủ dữ liệu bài đăng để tính funnel.</div>`;
     return;
   }
+  // Engaged theo bài đăng hiện chưa có metric nào xác nhận hoạt động qua API (xem ghi chú trong
+  // loadPostsForRange) — nên funnel gồm Views → Reach, và Clicks nếu lấy được.
   const steps = [
     { label: 'Views', value: agg.totalViews },
     { label: 'Reach', value: agg.totalReachFromPosts },
-    { label: 'Engaged', value: agg.totalEngagedFromPosts },
-    { label: 'Clicks', value: agg.totalClicks },
   ];
+  if (agg.totalClicks != null) steps.push({ label: 'Clicks', value: agg.totalClicks });
   const max = steps[0].value || 1;
+  const note = agg.totalClicks == null
+    ? `<div class="empty-note" style="margin-top:6px;">Clicks &amp; Engaged theo bài đăng: một phần chưa có qua Facebook API.</div>`
+    : `<div class="empty-note" style="margin-top:6px;">Engaged theo bài đăng hiện chưa có qua Facebook API.</div>`;
   el.innerHTML = steps.map(s => {
     const pct = max ? (s.value / max * 100) : 0;
     const widthPct = Math.max(4, Math.min(100, pct));
@@ -1237,7 +1244,7 @@ function renderFunnel(agg) {
         <div class="fbar" style="width:${widthPct.toFixed(1)}%;">${fmtNum(s.value)}</div>
         <div class="fpct">${pct.toFixed(1)}%</div>
       </div>`;
-  }).join('');
+  }).join('') + note;
 }
 
 function renderContentTypes(agg) {
@@ -1253,7 +1260,7 @@ function renderContentTypes(agg) {
       <div class="ctype-row">
         <div class="ctype-name">${escapeHtml(r.type)}</div>
         <div class="ctype-track"><div class="ctype-fill" style="width:${pct.toFixed(1)}%;"></div></div>
-        <div class="ctype-val">${fmtNum(r.avgViews)} views · ${r.engRate.toFixed(1)}%</div>
+        <div class="ctype-val">${fmtNum(r.avgViews)} views TB · ${r.count} bài</div>
       </div>`;
   }).join('');
 }
