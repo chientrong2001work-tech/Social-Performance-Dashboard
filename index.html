@@ -686,27 +686,51 @@ async function refreshAll() {
    ORGANIC (Page Insights) — daily series
    ============================================================ */
 async function loadOrganicSeries(page, since, until) {
-  // page_impressions_unique ~= organic reach, page_post_engagements ~= engagement
-  const metrics = 'page_impressions_unique,page_post_engagements';
-  const data = await fbGet(`${page.id}/insights`, {
-    metric: metrics,
-    period: 'day',
-    since: fmtDate(since),
-    until: fmtDate(until),
-  }, page.access_token);
+  // Facebook liên tục loại bỏ (deprecate) các metric Page Insights cũ theo từng đợt.
+  // Để dashboard không "chết" toàn bộ chỉ vì 1 metric bị Facebook khai tử, mình thử
+  // lần lượt từng tên metric (mới nhất trước) cho mỗi chỉ số, cái nào lỗi thì bỏ qua.
+  const period = 'day';
+  const commonParams = { period, since: fmtDate(since), until: fmtDate(until) };
+
+  // reach: metric mới thay cho page_impressions_unique (đã bị Facebook khai tử)
+  const REACH_METRIC_CANDIDATES = ['page_total_media_view_unique', 'page_impressions_unique', 'page_views_total'];
+  // engagement: page_post_engagements vẫn còn hoạt động tính tới hiện tại
+  const ENGAGEMENT_METRIC_CANDIDATES = ['page_post_engagements', 'page_engaged_users'];
+
+  async function fetchFirstWorkingMetric(candidates) {
+    for (const metric of candidates) {
+      try {
+        const data = await fbGet(`${page.id}/insights`, { ...commonParams, metric }, page.access_token);
+        const row = (data.data || [])[0];
+        if (row) return row;
+      } catch (err) {
+        // metric này bị Facebook chặn/khai tử → thử metric tiếp theo
+      }
+    }
+    return null;
+  }
+
+  const [reachRow, engagementRow] = await Promise.all([
+    fetchFirstWorkingMetric(REACH_METRIC_CANDIDATES),
+    fetchFirstWorkingMetric(ENGAGEMENT_METRIC_CANDIDATES),
+  ]);
 
   const series = { reach: {}, engagement: {} };
-  (data.data || []).forEach(m => {
-    const bucket = m.name === 'page_impressions_unique' ? series.reach
-                 : m.name === 'page_post_engagements' ? series.engagement
-                 : null;
-    if (!bucket) return;
-    (m.values || []).forEach(v => {
+  function fillBucket(bucket, row) {
+    if (!row) return;
+    (row.values || []).forEach(v => {
       const d = (v.end_time || '').slice(0, 10);
       if (!d) return;
       bucket[d] = (bucket[d] || 0) + (Number(v.value) || 0);
     });
-  });
+  }
+  fillBucket(series.reach, reachRow);
+  fillBucket(series.engagement, engagementRow);
+
+  if (!reachRow && !engagementRow) {
+    const e = new Error('Facebook đã ngừng hỗ trợ các chỉ số Page Insights hiện có. Vui lòng thử lại sau hoặc liên hệ Admin.');
+    throw e;
+  }
   return series;
 }
 
@@ -718,12 +742,31 @@ function seriesTotal(seriesObj) {
    TOP POSTS (organic detail table)
    ============================================================ */
 async function loadTopPosts(page, since, until) {
-  const data = await fbGet(`${page.id}/posts`, {
-    fields: 'id,message,created_time,insights.metric(post_impressions_unique,post_engaged_users,post_clicks)',
-    since: fmtDate(since),
-    until: fmtDate(until),
-    limit: 50,
-  }, page.access_token);
+  // post_impressions_unique đã bị Facebook khai tử → thử metric mới trước, rồi lần lượt
+  // rút gọn dần nếu bị lỗi, để bảng bài đăng vẫn hiện ra thay vì trắng trơn.
+  const METRIC_SETS = [
+    'post_total_media_view_unique,post_engaged_users,post_clicks',
+    'post_impressions_unique,post_engaged_users,post_clicks',
+    'post_engaged_users,post_clicks',
+  ];
+
+  let data = null;
+  let lastErr = null;
+  for (const metrics of METRIC_SETS) {
+    try {
+      data = await fbGet(`${page.id}/posts`, {
+        fields: `id,message,created_time,insights.metric(${metrics})`,
+        since: fmtDate(since),
+        until: fmtDate(until),
+        limit: 50,
+      }, page.access_token);
+      break;
+    } catch (err) {
+      lastErr = err;
+      data = null;
+    }
+  }
+  if (!data) throw lastErr || new Error('Không tải được danh sách bài đăng.');
 
   const rows = (data.data || []).map(post => {
     const ins = {};
@@ -732,7 +775,7 @@ async function loadTopPosts(page, since, until) {
       id: post.id,
       message: (post.message || '(Không có nội dung văn bản)').slice(0, 140),
       date: (post.created_time || '').slice(0, 10),
-      reach: Number(ins.post_impressions_unique) || 0,
+      reach: Number(ins.post_total_media_view_unique ?? ins.post_impressions_unique) || 0,
       engaged: Number(ins.post_engaged_users) || 0,
       clicks: Number(ins.post_clicks) || 0,
     };
