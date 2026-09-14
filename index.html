@@ -807,7 +807,7 @@ async function loadPostsForRange(page, since, until) {
   for (const metrics of METRIC_SETS) {
     try {
       data = await fbGet(`${page.id}/posts`, {
-        fields: `id,message,created_time,attachments{media_type},insights.metric(${metrics})`,
+        fields: `id,message,created_time,attachments{media_type},insights.metric(${metrics}).period(lifetime)`,
         since: fmtDate(since),
         until: fmtDate(until),
         limit: 100,
