@@ -123,7 +123,7 @@
   #statusLine.err { color: var(--critical); }
 
   /* ---------- KPI row ---------- */
-  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
   @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
   .kpi-card {
     background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
@@ -135,6 +135,27 @@
   .kpi-card .delta.good { color: var(--good); }
   .kpi-card .delta.bad { color: var(--critical); }
   .kpi-card .delta.flat { color: var(--muted); }
+  .kpi-card.mini { padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; }
+  .kpi-card.mini .label { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
+  .kpi-card.mini .value { font-size: 15px; font-weight: 600; }
+  .kpi-card.mini .value .sub { font-size: 11px; font-weight: 400; color: var(--muted); display: block; }
+
+  /* ---------- Funnel & content-type ---------- */
+  .funnel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  @media (max-width: 900px) { .funnel-row { grid-template-columns: 1fr; } }
+  .funnel-step { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .funnel-step .fbar {
+    height: 26px; border-radius: 6px; background: var(--series-reach); color: #fff;
+    display: flex; align-items: center; padding: 0 10px; font-size: 12px; font-weight: 600;
+    white-space: nowrap; min-width: 44px;
+  }
+  .funnel-step .flabel { font-size: 12px; color: var(--text-secondary); width: 90px; flex: none; }
+  .funnel-step .fpct { font-size: 12px; color: var(--muted); flex: none; }
+  .ctype-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 12px; }
+  .ctype-row .ctype-name { width: 60px; flex: none; text-transform: capitalize; color: var(--text-secondary); }
+  .ctype-row .ctype-track { flex: 1; background: var(--page-plane); border-radius: 5px; height: 16px; overflow: hidden; }
+  .ctype-row .ctype-fill { height: 100%; background: var(--series-msg); border-radius: 5px 0 0 5px; }
+  .ctype-row .ctype-val { flex: none; width: 96px; text-align: right; color: var(--muted); }
 
   /* ---------- Trend charts (small multiples) ---------- */
   .section-title { font-size: 14px; font-weight: 700; margin: 26px 0 10px; }
@@ -239,14 +260,30 @@
 
   <div id="dashboardView">
     <div class="kpi-row" id="kpiRow"></div>
+    <div class="kpi-row" id="kpiRow2"></div>
 
     <div class="section-title">Xu hướng 30 ngày gần nhất</div>
     <div class="chart-row" id="chartRow"></div>
+    <div class="chart-row" id="chartRow2" style="margin-top:10px;"></div>
+
+    <div class="section-title">Marketing Funnel &amp; Loại nội dung</div>
+    <div class="funnel-row">
+      <div class="table-card">
+        <div class="chart-title">Marketing Funnel</div>
+        <div class="chart-sub">Từ Views đến Engagement</div>
+        <div id="funnelBox" style="margin-top:10px;"></div>
+      </div>
+      <div class="table-card">
+        <div class="chart-title">Loại nội dung</div>
+        <div class="chart-sub">Avg views &amp; Eng. Rate theo loại nội dung</div>
+        <div id="ctypeBox" style="margin-top:10px;"></div>
+      </div>
+    </div>
 
     <div class="section-title">Chi tiết</div>
     <div class="table-row">
       <div class="table-card">
-        <div class="chart-title">Bài đăng — Reach cao nhất (organic)</div>
+        <div class="chart-title">Bài đăng — Views cao nhất (organic)</div>
         <div id="postsTable"></div>
       </div>
       <div class="table-card">
@@ -661,19 +698,34 @@ async function refreshAll() {
     const [organicCur, organicPrev, posts, ads] = await Promise.all([
       loadOrganicSeries(CURRENT_PAGE, since, until).catch(err => ({ error: err })),
       loadOrganicSeries(CURRENT_PAGE, prevSince, prevUntil).catch(err => ({ error: err })),
-      loadTopPosts(CURRENT_PAGE, since, until).catch(err => ({ error: err })),
+      loadPostsForRange(CURRENT_PAGE, since, until).catch(err => ({ error: err })),
       loadAdsData(since, until).catch(err => ({ error: err })),
     ]);
 
-    renderKPIs(organicCur, organicPrev, ads);
-    renderCharts(organicCur, ads);
-    renderPostsTable(posts);
+    const postsOk = !(posts && posts.error);
+    const agg = postsOk ? aggregatePosts(posts) : null;
+    const topPosts = postsOk ? [...posts].sort((a, b) => b.views - a.views).slice(0, 10) : posts;
+
+    renderKPIs(organicCur, organicPrev, ads, agg);
+    renderKPIs2(agg);
+    renderCharts(organicCur, ads, agg);
+    renderFunnel(agg);
+    renderContentTypes(agg);
+    renderPostsTable(topPosts);
     renderCampaignsTable(ads);
 
-    const problems = [organicCur, organicPrev, posts, ads].filter(x => x && x.error);
-    if (problems.length) {
-      setStatus('Một số dữ liệu không tải được — xem chi tiết trong Console (F12). Ví dụ: ' +
-        (problems[0].error.fbError?.message || problems[0].error.message), true);
+    const organicProblems = [organicCur, organicPrev, posts].filter(x => x && x.error);
+    const adsProblem = ads && ads.error;
+
+    if (adsProblem) {
+      // Ads/Messenger là dữ liệu quan trọng nhất — nếu lỗi ở đây mới cảnh báo đỏ.
+      setStatus('Một số dữ liệu quảng cáo không tải được — xem chi tiết trong Console (F12). Ví dụ: ' +
+        (adsProblem.fbError?.message || adsProblem.message), true);
+    } else if (organicProblems.length) {
+      // Dữ liệu organic (Reach/Engagement) không lấy được — Facebook đã ngừng hỗ trợ các chỉ số
+      // Page Insights cũ qua API. Đây không phải lỗi của dashboard, nên chỉ cảnh báo nhẹ (không đỏ gắt).
+      setStatus('Cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN') +
+        ' — Lưu ý: Facebook hiện chưa hỗ trợ dữ liệu Reach/Engagement organic qua API cho Trang này (xem ghi chú ở từng ô).');
     } else {
       setStatus('Cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN'));
     }
@@ -741,12 +793,12 @@ function seriesTotal(seriesObj) {
 /* ============================================================
    TOP POSTS (organic detail table)
    ============================================================ */
-async function loadTopPosts(page, since, until) {
-  // post_impressions_unique đã bị Facebook khai tử → thử metric mới trước, rồi lần lượt
-  // rút gọn dần nếu bị lỗi, để bảng bài đăng vẫn hiện ra thay vì trắng trơn.
+async function loadPostsForRange(page, since, until) {
+  // Facebook liên tục khai tử metric Insights cũ → thử bộ metric mới nhất trước, rồi rút gọn
+  // dần nếu bị lỗi, để danh sách bài đăng vẫn hiện ra thay vì trắng trơn.
   const METRIC_SETS = [
-    'post_total_media_view_unique,post_engaged_users,post_clicks',
-    'post_impressions_unique,post_engaged_users,post_clicks',
+    'post_total_media_view,post_total_media_view_unique,post_engaged_users,post_clicks',
+    'post_impressions,post_impressions_unique,post_engaged_users,post_clicks',
     'post_engaged_users,post_clicks',
   ];
 
@@ -755,10 +807,10 @@ async function loadTopPosts(page, since, until) {
   for (const metrics of METRIC_SETS) {
     try {
       data = await fbGet(`${page.id}/posts`, {
-        fields: `id,message,created_time,insights.metric(${metrics})`,
+        fields: `id,message,created_time,attachments{media_type},insights.metric(${metrics})`,
         since: fmtDate(since),
         until: fmtDate(until),
-        limit: 50,
+        limit: 100,
       }, page.access_token);
       break;
     } catch (err) {
@@ -768,20 +820,88 @@ async function loadTopPosts(page, since, until) {
   }
   if (!data) throw lastErr || new Error('Không tải được danh sách bài đăng.');
 
-  const rows = (data.data || []).map(post => {
+  return (data.data || []).map(post => {
     const ins = {};
     (post.insights?.data || []).forEach(m => { ins[m.name] = m.values?.[0]?.value ?? 0; });
     return {
       id: post.id,
       message: (post.message || '(Không có nội dung văn bản)').slice(0, 140),
       date: (post.created_time || '').slice(0, 10),
+      createdAt: post.created_time || '',
+      mediaType: post.attachments?.data?.[0]?.media_type || 'status',
+      views: Number(ins.post_total_media_view ?? ins.post_impressions) || 0,
       reach: Number(ins.post_total_media_view_unique ?? ins.post_impressions_unique) || 0,
       engaged: Number(ins.post_engaged_users) || 0,
       clicks: Number(ins.post_clicks) || 0,
     };
   });
-  rows.sort((a, b) => b.reach - a.reach);
-  return rows.slice(0, 10);
+}
+
+/* ============================================================
+   AGGREGATES derived from the full posts list — total views/clicks,
+   best hour/day, content-type breakdown. All computed client-side
+   from data already fetched, no extra API calls needed.
+   ============================================================ */
+const DOW_LABELS_VN = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+const MEDIA_TYPE_LABELS = { photo: 'Ảnh', video: 'Video', album: 'Album', share: 'Share', link: 'Link', status: 'Text', reel: 'Reel' };
+
+function aggregatePosts(posts) {
+  const totalViews = posts.reduce((s, p) => s + p.views, 0);
+  const totalClicks = posts.reduce((s, p) => s + p.clicks, 0);
+  const totalEngagedFromPosts = posts.reduce((s, p) => s + p.engaged, 0);
+
+  const dailyViews = {};
+  posts.forEach(p => { if (p.date) dailyViews[p.date] = (dailyViews[p.date] || 0) + p.views; });
+
+  const hourBuckets = {}, dayBuckets = {};
+  posts.forEach(p => {
+    if (!p.createdAt) return;
+    const d = new Date(p.createdAt);
+    if (isNaN(d.getTime())) return;
+    const h = d.getHours(), dow = d.getDay();
+    hourBuckets[h] = hourBuckets[h] || { sum: 0, count: 0 };
+    hourBuckets[h].sum += p.views; hourBuckets[h].count++;
+    dayBuckets[dow] = dayBuckets[dow] || { sum: 0, count: 0 };
+    dayBuckets[dow].sum += p.views; dayBuckets[dow].count++;
+  });
+  function bestKey(buckets) {
+    let bestK = null, bestAvg = -1;
+    Object.entries(buckets).forEach(([k, v]) => {
+      const avg = v.sum / v.count;
+      if (avg > bestAvg) { bestAvg = avg; bestK = k; }
+    });
+    return bestK;
+  }
+  const bestHourKey = bestKey(hourBuckets);
+  const bestDayKey = bestKey(dayBuckets);
+  const bestHourLabel = bestHourKey != null ? `${String(bestHourKey).padStart(2, '0')}:00` : '—';
+  const bestDayLabel = bestDayKey != null ? DOW_LABELS_VN[Number(bestDayKey)] : '—';
+
+  const typeBuckets = {};
+  posts.forEach(p => {
+    const t = p.mediaType || 'status';
+    typeBuckets[t] = typeBuckets[t] || { views: 0, engaged: 0, reach: 0, count: 0 };
+    typeBuckets[t].views += p.views; typeBuckets[t].engaged += p.engaged;
+    typeBuckets[t].reach += p.reach; typeBuckets[t].count++;
+  });
+  const typeRows = Object.entries(typeBuckets).map(([type, v]) => ({
+    type: MEDIA_TYPE_LABELS[type] || type,
+    avgViews: v.count ? v.views / v.count : 0,
+    engRate: v.reach ? (v.engaged / v.reach * 100) : 0,
+    count: v.count,
+  })).sort((a, b) => b.avgViews - a.avgViews);
+
+  const videoLikeCount = posts.filter(p => p.mediaType === 'video' || p.mediaType === 'reel').length;
+
+  const totalReachFromPosts = posts.reduce((s, p) => s + p.reach, 0);
+  const engRate = totalReachFromPosts ? (totalEngagedFromPosts / totalReachFromPosts * 100) : null;
+  const topPost = posts.length ? posts.reduce((best, p) => (!best || p.views > best.views) ? p : best, null) : null;
+  const postCount = posts.length;
+
+  return {
+    totalViews, totalClicks, totalEngagedFromPosts, dailyViews, bestHourLabel, bestDayLabel,
+    typeRows, videoLikeCount, totalReachFromPosts, engRate, topPost, postCount,
+  };
 }
 
 /* ============================================================
@@ -850,7 +970,7 @@ function deltaHtml(pct) {
   return `<span class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(1)}% so với kỳ trước</span>`;
 }
 
-function renderKPIs(cur, prev, ads) {
+function renderKPIs(cur, prev, ads, agg) {
   const reachCur = cur?.error ? null : seriesTotal(cur.reach);
   const reachPrev = prev?.error ? null : seriesTotal(prev.reach);
   const engCur = cur?.error ? null : seriesTotal(cur.engagement);
@@ -859,9 +979,19 @@ function renderKPIs(cur, prev, ads) {
   const messages = ads?.error ? null : ads.totalMessages;
   const cpm = (spend != null && messages) ? spend / messages : null;
 
+  const organicUnavailable = !!cur?.error;
+  const organicNote = `<span class="delta flat" title="Facebook đã ngừng hỗ trợ chỉ số này qua API cho Trang này">Facebook chưa hỗ trợ dữ liệu này</span>`;
+
+  const postsNote = `<span class="delta flat">Không lấy được dữ liệu bài đăng</span>`;
+  const postCountLabel = agg ? `<span class="delta flat">Từ ${fmtNum(agg.postCount)} bài đăng</span>` : postsNote;
+
   const cards = [
-    { label: 'Tổng Reach (organic)', value: fmtNum(reachCur), delta: deltaHtml(pctDelta(reachCur, reachPrev)) },
-    { label: 'Tổng Engagement (organic)', value: fmtNum(engCur), delta: deltaHtml(pctDelta(engCur, engPrev)) },
+    { label: 'Tổng Reach (organic)', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
+    { label: 'Tổng Engagement (organic)', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
+    { label: 'Tổng Views (bài đăng)', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
+    { label: 'Tổng Clicks (bài đăng)', value: agg ? fmtNum(agg.totalClicks) : '—', delta: `<span class="delta flat">Trên bài đăng</span>` },
+    { label: 'Eng. Rate (bài đăng)', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: `<span class="delta flat">Engaged / Reach</span>` },
+    { label: 'Bài track', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong 30 ngày</span>` },
     { label: 'Chi phí Ads (30 ngày)', value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
     { label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
     { label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình 30 ngày</span>` },
@@ -874,19 +1004,61 @@ function renderKPIs(cur, prev, ads) {
     </div>`).join('');
 }
 
+function renderKPIs2(agg) {
+  const el = document.getElementById('kpiRow2');
+  if (!agg) {
+    el.innerHTML = `<div class="empty-note">Không lấy được dữ liệu bài đăng để tính các chỉ số này.</div>`;
+    return;
+  }
+  const top = agg.topPost;
+  const cards = [
+    { label: 'Bài Top (nhiều views nhất)', value: top ? fmtNum(top.views) : '—', sub: top ? top.date : '' },
+    { label: 'Giờ đăng tốt nhất', value: agg.bestHourLabel, sub: 'Trung bình views cao nhất' },
+    { label: 'Ngày đăng tốt nhất', value: agg.bestDayLabel, sub: 'Trung bình views cao nhất' },
+    { label: 'Total Watch (Video/Reel)', value: fmtNum(agg.videoLikeCount), sub: 'Số bài video & reel' },
+  ];
+  el.innerHTML = cards.map(c => `
+    <div class="kpi-card mini">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}${c.sub ? `<span class="sub">${escapeHtml(c.sub)}</span>` : ''}</div>
+    </div>`).join('');
+}
+
 /* ============================================================
    RENDER — small-multiple bar charts (SVG)
    ============================================================ */
-function renderCharts(organicCur, ads) {
-  const reachSeries = organicCur?.error ? {} : organicCur.reach;
-  const engSeries = organicCur?.error ? {} : organicCur.engagement;
+function renderCharts(organicCur, ads, agg) {
+  const organicUnavailable = !!organicCur?.error;
+  const reachSeries = organicUnavailable ? {} : organicCur.reach;
+  const engSeries = organicUnavailable ? {} : organicCur.engagement;
   const msgSeries = buildAdsDailySeries(ads);
 
   const row = document.getElementById('chartRow');
   row.innerHTML = '';
-  row.appendChild(barChartCard('Reach hàng ngày (organic)', reachSeries, 'var(--series-reach)'));
-  row.appendChild(barChartCard('Engagement hàng ngày (organic)', engSeries, 'var(--series-engage)'));
+  row.appendChild(barChartCard('Reach hàng ngày (organic)', reachSeries, 'var(--series-reach)', false,
+    organicUnavailable ? 'Facebook đã ngừng hỗ trợ chỉ số organic này qua API cho Trang này.' : null));
+  row.appendChild(barChartCard('Engagement hàng ngày (organic)', engSeries, 'var(--series-engage)', false,
+    organicUnavailable ? 'Facebook đã ngừng hỗ trợ chỉ số organic này qua API cho Trang này.' : null));
   row.appendChild(barChartCard('Messages Started / ngày (ước tính)', msgSeries, 'var(--series-msg)', true));
+
+  const row2 = document.getElementById('chartRow2');
+  row2.innerHTML = '';
+  if (!agg) {
+    row2.appendChild(barChartCard('Daily View Data (bài đăng)', {}, 'var(--series-reach)', false, 'Không lấy được dữ liệu bài đăng.'));
+    row2.appendChild(barChartCard('Cumulative Views (bài đăng)', {}, 'var(--series-engage)', false, 'Không lấy được dữ liệu bài đăng.'));
+    return;
+  }
+  row2.appendChild(barChartCard('Daily View Data (bài đăng)', agg.dailyViews, 'var(--series-reach)', false, null));
+  const cumulative = buildCumulativeSeries(agg.dailyViews);
+  row2.appendChild(lineChartCard('Cumulative Views (bài đăng)', cumulative, 'var(--series-engage)', 'Tổng views luỹ kế 30 ngày'));
+}
+
+function buildCumulativeSeries(dailyViews) {
+  const dates = Object.keys(dailyViews || {}).sort();
+  let running = 0;
+  const out = {};
+  dates.forEach(d => { running += dailyViews[d]; out[d] = running; });
+  return out;
 }
 
 // Ads Insights (level=campaign, no time increment) doesn't give a daily breakdown in loadAdsData;
@@ -903,9 +1075,17 @@ function buildAdsDailySeries(ads) {
   return out;
 }
 
-function barChartCard(title, seriesObj, color, isApprox) {
+function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   const wrap = document.createElement('div');
   wrap.className = 'chart-card';
+
+  if (emptyNote) {
+    wrap.innerHTML = `
+      <div class="chart-title">${title}</div>
+      <div class="empty-note">${escapeHtml(emptyNote)}</div>
+    `;
+    return wrap;
+  }
   const dates = Object.keys(seriesObj).sort();
   const values = dates.map(d => seriesObj[d]);
   const max = Math.max(1, ...values);
@@ -963,23 +1143,139 @@ function barChartCard(title, seriesObj, color, isApprox) {
   return wrap;
 }
 
+// Line chart (for cumulative-style series). Same visual language as barChartCard
+// (grid/baseline/axis labels/tooltip) but draws a filled line instead of bars.
+function lineChartCard(title, seriesObj, color, subtitle) {
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-card';
+
+  const dates = Object.keys(seriesObj || {}).sort();
+  const values = dates.map(d => seriesObj[d]);
+  const max = Math.max(1, ...values);
+  const W = 340, H = 140, padL = 34, padB = 18, padT = 6, padR = 6;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const stepX = dates.length > 1 ? plotW / (dates.length - 1) : 0;
+
+  const points = dates.map((d, i) => {
+    const x = padL + i * stepX;
+    const y = padT + (plotH - (max ? (values[i] / max) * plotH : 0));
+    return { x, y, d, v: values[i] };
+  });
+  const linePath = points.length ? `M ${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')}` : '';
+  const areaPath = points.length
+    ? `M ${padL.toFixed(1)},${(padT + plotH).toFixed(1)} L ${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')} L ${points[points.length - 1].x.toFixed(1)},${(padT + plotH).toFixed(1)} Z`
+    : '';
+
+  let grid = '';
+  for (let g = 1; g <= 3; g++) {
+    const y = padT + plotH * (g / 4);
+    grid += `<line class="gridline" x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"></line>`;
+  }
+  const baseline = `<line class="baseline" x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}"></line>`;
+
+  let labels = '';
+  if (dates.length) {
+    const idxs = [0, Math.floor(dates.length / 2), dates.length - 1];
+    idxs.forEach(i => {
+      const label = dates[i].slice(5);
+      labels += `<text class="axis-label" x="${points[i].x.toFixed(1)}" y="${H - 4}" text-anchor="middle">${label}</text>`;
+    });
+  }
+
+  const dots = points.map(p =>
+    `<circle class="dot" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="${color}" data-date="${p.d}" data-val="${p.v}"></circle>`
+  ).join('');
+
+  wrap.innerHTML = `
+    <div class="chart-title">${title}</div>
+    <div class="chart-sub">${subtitle || '30 ngày gần nhất'}</div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+      ${grid}
+      <path d="${areaPath}" fill="${color}" opacity="0.12" stroke="none"></path>
+      <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2"></path>
+      ${dots}${baseline}${labels}
+    </svg>
+  `;
+
+  const svg = wrap.querySelector('svg');
+  const tooltip = document.getElementById('tooltip');
+  svg.querySelectorAll('.dot').forEach(dot => {
+    dot.addEventListener('mousemove', (e) => {
+      tooltip.style.opacity = '1';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+      tooltip.textContent = `${dot.dataset.date}: ${fmtNum(Number(dot.dataset.val))}`;
+    });
+    dot.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  });
+
+  return wrap;
+}
+
+/* ============================================================
+   RENDER — Marketing Funnel & content-type breakdown
+   ============================================================ */
+function renderFunnel(agg) {
+  const el = document.getElementById('funnelBox');
+  if (!agg || !agg.totalViews) {
+    el.innerHTML = `<div class="empty-note">Chưa có đủ dữ liệu bài đăng để tính funnel.</div>`;
+    return;
+  }
+  const steps = [
+    { label: 'Views', value: agg.totalViews },
+    { label: 'Reach', value: agg.totalReachFromPosts },
+    { label: 'Engaged', value: agg.totalEngagedFromPosts },
+    { label: 'Clicks', value: agg.totalClicks },
+  ];
+  const max = steps[0].value || 1;
+  el.innerHTML = steps.map(s => {
+    const pct = max ? (s.value / max * 100) : 0;
+    const widthPct = Math.max(4, Math.min(100, pct));
+    return `
+      <div class="funnel-step">
+        <div class="flabel">${s.label}</div>
+        <div class="fbar" style="width:${widthPct.toFixed(1)}%;">${fmtNum(s.value)}</div>
+        <div class="fpct">${pct.toFixed(1)}%</div>
+      </div>`;
+  }).join('');
+}
+
+function renderContentTypes(agg) {
+  const el = document.getElementById('ctypeBox');
+  if (!agg || !agg.typeRows.length) {
+    el.innerHTML = `<div class="empty-note">Chưa có đủ dữ liệu bài đăng để phân loại nội dung.</div>`;
+    return;
+  }
+  const maxAvgViews = Math.max(1, ...agg.typeRows.map(r => r.avgViews));
+  el.innerHTML = agg.typeRows.map(r => {
+    const pct = Math.max(4, Math.min(100, (r.avgViews / maxAvgViews) * 100));
+    return `
+      <div class="ctype-row">
+        <div class="ctype-name">${escapeHtml(r.type)}</div>
+        <div class="ctype-track"><div class="ctype-fill" style="width:${pct.toFixed(1)}%;"></div></div>
+        <div class="ctype-val">${fmtNum(r.avgViews)} views · ${r.engRate.toFixed(1)}%</div>
+      </div>`;
+  }).join('');
+}
+
 /* ============================================================
    RENDER — Tables
    ============================================================ */
 function renderPostsTable(posts) {
   const el = document.getElementById('postsTable');
   if (!posts || posts.error) {
-    el.innerHTML = `<div class="empty-note">Không tải được danh sách bài đăng: ${escapeHtml(posts?.error?.fbError?.message || posts?.error?.message || '')}</div>`;
+    el.innerHTML = `<div class="empty-note">Facebook hiện chưa hỗ trợ dữ liệu Reach/Engagement theo bài đăng qua API cho Trang này.</div>`;
     return;
   }
   if (!posts.length) { el.innerHTML = `<div class="empty-note">Chưa có bài đăng nào trong khoảng thời gian này.</div>`; return; }
   el.innerHTML = `
     <table>
-      <thead><tr><th>Ngày</th><th>Nội dung</th><th class="num">Reach</th><th class="num">Engaged</th><th class="num">Clicks</th></tr></thead>
+      <thead><tr><th>Ngày</th><th>Nội dung</th><th class="num">Views</th><th class="num">Reach</th><th class="num">Engaged</th><th class="num">Clicks</th></tr></thead>
       <tbody>
         ${posts.map(p => `<tr>
           <td>${p.date}</td>
           <td class="msg-cell" title="${escapeHtml(p.message)}">${escapeHtml(p.message)}</td>
+          <td class="num">${fmtNum(p.views)}</td>
           <td class="num">${fmtNum(p.reach)}</td>
           <td class="num">${fmtNum(p.engaged)}</td>
           <td class="num">${fmtNum(p.clicks)}</td>
