@@ -794,47 +794,54 @@ function seriesTotal(seriesObj) {
    TOP POSTS (organic detail table)
    ============================================================ */
 async function loadPostsForRange(page, since, until) {
-  // Đã xác nhận trực tiếp qua Graph API Explorer (2026-09-14): post_media_view, post_total_media_view_unique
-  // và post_clicks đều còn trả dữ liệu thật theo từng bài đăng — nhưng khi gộp quá nhiều metric (kèm
-  // post_activity_by_action_type_unique) vào 1 lệnh insights.metric(...) thì kết quả bị cắt bớt.
-  // Vì vậy tách làm 2 lượt gọi song song (Views+Reach riêng, Clicks riêng) rồi ghép lại theo post id —
-  // mỗi lượt dùng đúng tổ hợp đã kiểm chứng hoạt động.
+  // Danh sách bài đăng cơ bản (id/message/created_time) — chỉ dùng field đơn giản, không kèm gì khác,
+  // để chắc chắn không bị hỏng bởi bất kỳ metric hay field lồng nào. Đây là phần BẮT BUỘC phải có.
   const commonParams = { since: fmtDate(since), until: fmtDate(until), limit: 100 };
+  const listData = await fbGet(`${page.id}/posts`, {
+    fields: 'id,message,created_time',
+    ...commonParams,
+  }, page.access_token);
+  const posts = listData.data || [];
 
-  const [baseData, clicksData] = await Promise.all([
-    fbGet(`${page.id}/posts`, {
-      fields: 'id,message,created_time,attachments{media_type},insights.metric(post_media_view,post_total_media_view_unique)',
-      ...commonParams,
-    }, page.access_token),
-    fbGet(`${page.id}/posts`, {
-      fields: 'id,insights.metric(post_clicks)',
-      ...commonParams,
-    }, page.access_token).catch(() => null), // Clicks là phụ — nếu lượt này lỗi vẫn giữ được Views/Reach
+  // Từ đây, mỗi phần bổ sung (loại media, views/reach, clicks) được lấy RIÊNG và bọc try/catch độc
+  // lập — nếu Facebook đổi/bỏ 1 metric nào đó trong tương lai, chỉ phần đó bị ảnh hưởng, không kéo
+  // sập toàn bộ bảng bài đăng như trước.
+  const [attachData, viewsData, clicksData] = await Promise.all([
+    fbGet(`${page.id}/posts`, { fields: 'id,attachments{media_type}', ...commonParams }, page.access_token).catch(() => null),
+    fbGet(`${page.id}/posts`, { fields: 'id,insights.metric(post_media_view,post_total_media_view_unique)', ...commonParams }, page.access_token).catch(() => null),
+    fbGet(`${page.id}/posts`, { fields: 'id,insights.metric(post_clicks)', ...commonParams }, page.access_token).catch(() => null),
   ]);
 
-  const clicksById = {};
-  if (clicksData) {
-    (clicksData.data || []).forEach(post => {
-      const row = (post.insights?.data || []).find(m => m.name === 'post_clicks');
-      if (row) clicksById[post.id] = Number(row.values?.[0]?.value) || 0;
-    });
-  }
+  const mediaById = {};
+  (attachData?.data || []).forEach(p => { mediaById[p.id] = p.attachments?.data?.[0]?.media_type; });
 
-  return (baseData.data || []).map(post => {
+  const viewsById = {};
+  (viewsData?.data || []).forEach(p => {
     const ins = {};
-    (post.insights?.data || []).forEach(m => { ins[m.name] = m.values?.[0]?.value ?? 0; });
-    return {
-      id: post.id,
-      message: (post.message || '(Không có nội dung văn bản)').slice(0, 140),
-      date: (post.created_time || '').slice(0, 10),
-      createdAt: post.created_time || '',
-      mediaType: post.attachments?.data?.[0]?.media_type || 'status',
+    (p.insights?.data || []).forEach(m => { ins[m.name] = m.values?.[0]?.value ?? 0; });
+    viewsById[p.id] = {
       views: Number(ins.post_media_view) || 0,
       reach: Number(ins.post_total_media_view_unique) || 0,
-      engaged: null,
-      clicks: Object.prototype.hasOwnProperty.call(clicksById, post.id) ? clicksById[post.id] : null,
     };
   });
+
+  const clicksById = {};
+  (clicksData?.data || []).forEach(p => {
+    const row = (p.insights?.data || []).find(m => m.name === 'post_clicks');
+    if (row) clicksById[p.id] = Number(row.values?.[0]?.value) || 0;
+  });
+
+  return posts.map(post => ({
+    id: post.id,
+    message: (post.message || '(Không có nội dung văn bản)').slice(0, 140),
+    date: (post.created_time || '').slice(0, 10),
+    createdAt: post.created_time || '',
+    mediaType: mediaById[post.id] || 'status',
+    views: viewsById[post.id]?.views ?? 0,
+    reach: viewsById[post.id]?.reach ?? 0,
+    engaged: null,
+    clicks: Object.prototype.hasOwnProperty.call(clicksById, post.id) ? clicksById[post.id] : null,
+  }));
 }
 
 /* ============================================================
