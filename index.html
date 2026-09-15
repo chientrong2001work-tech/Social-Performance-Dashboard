@@ -938,12 +938,18 @@ auth.onAuthStateChanged(async (user) => {
     if (!doc.exists) {
       // Tài khoản Firebase đã tồn tại (đăng nhập thành công) nhưng chưa từng được Admin cấp quyền
       // — ví dụ tài khoản đã bị "Thu hồi" kiểu cũ (xoá hẳn doc) trước khi có tính năng khôi phục.
-      // Tự tạo một hồ sơ "chờ duyệt" để Admin thấy và cấp lại quyền trong mục Quản lý người dùng,
-      // thay vì phải tạo lại tài khoản Firebase mới (sẽ báo lỗi trùng email).
-      await userRef.set({ email: user.email, name: user.email, role: 'viewer', pendingApproval: true });
-      doc = await userRef.get();
+      // Thử tự tạo một hồ sơ "chờ duyệt" để Admin thấy và cấp lại quyền trong mục Quản lý người dùng,
+      // thay vì phải tạo lại tài khoản Firebase mới (sẽ báo lỗi trùng email). Bọc riêng bằng try/catch:
+      // nếu Firestore Security Rules chưa cho phép user tự ghi hồ sơ của chính mình (permission-denied),
+      // vẫn cho họ thấy màn hình "chờ duyệt" bình thường thay vì bị kẹt trắng màn hình đăng nhập.
+      try {
+        await userRef.set({ email: user.email, name: user.email, role: 'viewer', pendingApproval: true });
+        doc = await userRef.get();
+      } catch (writeErr) {
+        console.error('Không tự tạo được hồ sơ chờ duyệt (có thể do Firestore Rules chưa cho phép):', writeErr);
+      }
     }
-    const data = doc.data();
+    const data = doc.exists ? doc.data() : { pendingApproval: true, email: user.email, name: user.email };
     if (data.pendingApproval || data.revoked) {
       document.getElementById('pendingEmail').textContent = user.email;
       showScreen('pending');
@@ -961,7 +967,10 @@ auth.onAuthStateChanged(async (user) => {
     await enterApp(user, data);
   } catch (e) {
     showLoading(false);
-    setStatus('Lỗi tải dữ liệu tài khoản: ' + e.message, true);
+    // Hiển thị lỗi ngay trên màn hình đăng nhập (thay vì statusLine ẩn bên trong #app mà người dùng
+    // chưa từng thấy được) để không bị "màn hình trắng, bấm không có phản hồi gì" khi có lỗi.
+    showScreen('login');
+    setMsg('loginError', 'Lỗi tải dữ liệu tài khoản: ' + e.message, 'err');
   }
 });
 
