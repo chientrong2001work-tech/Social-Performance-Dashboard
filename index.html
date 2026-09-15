@@ -761,6 +761,34 @@
     <div class="table-card card-3d">
       <div id="usersTable"></div>
     </div>
+
+    <!-- Panel sửa quyền xem Page cụ thể + xem Dashboard/Advertising cho 1 người dùng — bấm "Sửa quyền"
+         ở bảng trên để mở, điền sẵn theo quyền hiện tại của người đó. -->
+    <div id="permEditPanel" class="table-card card-3d" style="margin-top:14px;max-width:480px;" hidden>
+      <div class="chart-title" style="margin-bottom:2px;">Sửa quyền xem cho <span id="permEditName"></span></div>
+      <div class="hint" style="margin-bottom:10px;">Bỏ tick "Tất cả Page" để chỉ cho phép xem một số Page cụ thể. Tương tự, chỉ tick Dashboard và/hoặc Advertising mà bạn muốn họ xem được.</div>
+      <div class="field">
+        <label>Quyền xem Page</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;margin-top:4px;">
+          <input type="checkbox" id="permAllPages" onchange="togglePermPagesList()"> Tất cả Page
+        </label>
+        <div id="permPagesList" style="margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:160px;overflow:auto;"></div>
+      </div>
+      <div class="field">
+        <label>Quyền xem trang</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;margin-top:4px;">
+          <input type="checkbox" id="permViewDashboard"> Dashboard
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;">
+          <input type="checkbox" id="permViewAdvertising"> Advertising
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="savePermEdit()">Lưu quyền</button>
+        <button class="btn secondary" onclick="closePermEdit()">Huỷ</button>
+      </div>
+      <div id="permEditMsg" class="msg-box"></div>
+    </div>
   </div>
 
   <footer class="foot">Dữ liệu lấy trực tiếp từ trình duyệt của bạn qua Facebook Graph API &amp; Marketing API. Đăng nhập và phân quyền được quản lý qua Firebase.</footer>
@@ -793,6 +821,10 @@ const db = firebase.firestore();
 let CURRENT_USER = null;   // firebase auth user object
 let CURRENT_ROLE = null;   // 'admin' | 'viewer'
 let CURRENT_VIEW = 'dashboard'; // 'dashboard' | 'advertising' | 'metrics' | 'admin'
+// Phân quyền chi tiết cho user hiện tại — 'all' (không giới hạn) hoặc mảng cụ thể.
+// Admin luôn là 'all' bất kể dữ liệu lưu gì. User cũ chưa có field này cũng coi là 'all' (tương thích ngược).
+let CURRENT_ALLOWED_PAGES = 'all'; // 'all' | string[] (page id)
+let CURRENT_ALLOWED_VIEWS = 'all'; // 'all' | ('dashboard'|'advertising')[]
 
 /* ============================================================
    CONFIG (shared Facebook token, loaded from Firestore)
@@ -1006,8 +1038,13 @@ auth.onAuthStateChanged(async (user) => {
 async function enterApp(user, data) {
   CURRENT_USER = user;
   CURRENT_ROLE = data.role || 'viewer';
+  // Admin luôn không giới hạn. Viewer bị giới hạn theo allowedPages/allowedViews đã được Admin gán
+  // (mảng cụ thể) — thiếu field (user cũ) hoặc giá trị 'all' đều coi là không giới hạn.
+  CURRENT_ALLOWED_PAGES = (CURRENT_ROLE === 'admin' || !Array.isArray(data.allowedPages)) ? 'all' : data.allowedPages;
+  CURRENT_ALLOWED_VIEWS = (CURRENT_ROLE === 'admin' || !Array.isArray(data.allowedViews)) ? 'all' : data.allowedViews;
   document.getElementById('adminNavBtn').hidden = CURRENT_ROLE !== 'admin';
   document.getElementById('welcomeName').textContent = data.name || user.email;
+  applyViewPermissions();
 
   const cfgDoc = await db.collection('config').doc('shared').get();
   if (cfgDoc.exists) {
@@ -1084,7 +1121,32 @@ function renderView() {
   document.getElementById('adminNavBtn').textContent = CURRENT_VIEW === 'admin' ? '← Về Dashboard' : 'Quản lý người dùng';
 }
 
+// "Explain the metrics" chỉ là tài liệu tĩnh, không có dữ liệu riêng của Page nào — luôn cho xem.
+// "admin" (trang Quản lý người dùng) được gác riêng bằng CURRENT_ROLE, không liên quan allowedViews.
+function canAccessView(view) {
+  if (view === 'metrics' || view === 'admin') return true;
+  return CURRENT_ALLOWED_VIEWS === 'all' || CURRENT_ALLOWED_VIEWS.includes(view);
+}
+function firstAllowedView() {
+  if (canAccessView('dashboard')) return 'dashboard';
+  if (canAccessView('advertising')) return 'advertising';
+  return 'metrics';
+}
+// Ẩn các tab (Dashboard/Advertising) mà user hiện tại không được cấp quyền xem, và điều hướng
+// khỏi CURRENT_VIEW nếu nó vừa trở thành không hợp lệ (ví dụ Admin vừa thu hẹp quyền của họ).
+function applyViewPermissions() {
+  document.querySelectorAll('#pageTabs .tab-item').forEach(btn => {
+    btn.hidden = !canAccessView(btn.dataset.view);
+  });
+  if (!canAccessView(CURRENT_VIEW)) {
+    switchView(firstAllowedView());
+  } else {
+    renderView();
+  }
+}
+
 function switchView(view) {
+  if (!canAccessView(view)) view = firstAllowedView();
   CURRENT_VIEW = view;
   renderView();
   if (view === 'admin') {
@@ -1180,6 +1242,18 @@ async function grantByUid() {
   }
 }
 
+let USERS_LIST_CACHE = {}; // uid -> dữ liệu user gần nhất load được, dùng để mở panel "Sửa quyền" mà không phải nhồi mảng vào thuộc tính onclick
+
+// Tóm tắt quyền xem Page/trang của 1 user thành 1 dòng chữ ngắn gọn hiển thị trong bảng.
+function summarizePerm(u) {
+  if (u.role === 'admin') return 'Toàn quyền (Admin)';
+  const pagesText = Array.isArray(u.allowedPages) ? `${u.allowedPages.length} Page` : 'Tất cả Page';
+  const viewsText = Array.isArray(u.allowedViews)
+    ? (u.allowedViews.length ? u.allowedViews.map(v => v === 'dashboard' ? 'Dashboard' : 'Advertising').join(', ') : 'Chưa chọn trang nào')
+    : 'Tất cả trang';
+  return `${pagesText} · ${viewsText}`;
+}
+
 async function loadUsersList() {
   const el = document.getElementById('usersTable');
   el.innerHTML = '<div class="empty-note">Đang tải…</div>';
@@ -1195,12 +1269,15 @@ async function loadUsersList() {
       if (pa !== pb) return pa - pb;
       return (a.email || '').localeCompare(b.email || '');
     });
+    USERS_LIST_CACHE = {};
+    rows.forEach(u => { USERS_LIST_CACHE[u.uid] = u; });
     el.innerHTML = `
       <table>
-        <thead><tr><th>Họ tên</th><th>Email</th><th>Trạng thái / Vai trò</th><th></th></tr></thead>
+        <thead><tr><th>Họ tên</th><th>Email</th><th>Trạng thái / Vai trò</th><th>Quyền xem</th><th></th></tr></thead>
         <tbody>
           ${rows.map(u => {
             const isMe = u.uid === CURRENT_USER.uid;
+            const isNormalActive = !u.pendingApproval && !u.revoked;
             let statusCell;
             if (u.pendingApproval) {
               statusCell = `<span class="soon-badge" style="color:var(--brand-accent);border-color:var(--brand-accent);">Chờ duyệt</span>`;
@@ -1212,6 +1289,7 @@ async function loadUsersList() {
                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
               </select>`;
             }
+            const permCell = isNormalActive ? escapeHtml(summarizePerm(u)) : '—';
             let actionCell;
             if (isMe) {
               actionCell = '<span style="color:var(--muted);font-size:12px;">(bạn)</span>';
@@ -1220,18 +1298,20 @@ async function loadUsersList() {
             } else if (u.revoked) {
               actionCell = `<button class="btn" style="padding:6px 12px;font-size:12px;" onclick="restoreUser('${u.uid}','${escapeHtml(u.email || '')}')">Khôi phục</button>`;
             } else {
-              actionCell = `<button class="btn secondary" onclick="removeUser('${u.uid}','${escapeHtml(u.email || '')}')">Thu hồi</button>`;
+              const editBtn = u.role === 'admin' ? '' : `<button class="btn secondary" style="padding:6px 12px;font-size:12px;" onclick="openPermEditByUid('${u.uid}')">Sửa quyền</button> `;
+              actionCell = `${editBtn}<button class="btn secondary" onclick="removeUser('${u.uid}','${escapeHtml(u.email || '')}')">Thu hồi</button>`;
             }
             return `<tr>
               <td>${escapeHtml(u.name || '')}</td>
               <td>${escapeHtml(u.email || '')}</td>
               <td>${statusCell}</td>
+              <td style="font-size:12px;color:var(--text-secondary);">${permCell}</td>
               <td>${actionCell}</td>
             </tr>`;
           }).join('')}
         </tbody>
       </table>
-      <div class="empty-note" style="margin-top:8px;">"Thu hồi" chỉ chặn truy cập dashboard (có thể "Khôi phục" lại bất cứ lúc nào), không xoá tài khoản đăng nhập Firebase. "Chờ duyệt" là người đã từng đăng nhập bằng một tài khoản Firebase có sẵn nhưng chưa được cấp quyền — bấm "Duyệt" để cấp quyền Xem cho họ (sau đó có thể đổi thành Admin nếu cần).</div>
+      <div class="empty-note" style="margin-top:8px;">"Thu hồi" chỉ chặn truy cập dashboard (có thể "Khôi phục" lại bất cứ lúc nào), không xoá tài khoản đăng nhập Firebase. "Chờ duyệt" là người đã từng đăng nhập bằng một tài khoản Firebase có sẵn nhưng chưa được cấp quyền — bấm "Duyệt" để cấp quyền Xem cho họ (sau đó có thể đổi thành Admin nếu cần). "Sửa quyền" giới hạn Page và trang (Dashboard/Advertising) cụ thể mà người đó được xem — mặc định (chưa sửa) là xem được tất cả.</div>
     `;
   } catch (e) {
     el.innerHTML = '<div class="empty-note">Lỗi tải danh sách: ' + escapeHtml(e.message) + '</div>';
@@ -1281,6 +1361,102 @@ async function restoreUser(uid, email) {
 }
 
 /* ============================================================
+   ADMIN — sửa quyền xem Page cụ thể + trang (Dashboard/Advertising) cho từng user
+   ============================================================ */
+let ALL_PAGES_CACHE = null; // [{id,name}] danh sách Page lấy qua token dùng chung — dùng để hiển thị checkbox chọn quyền
+let PERM_EDIT_UID = null;   // uid đang mở panel "Sửa quyền"
+
+async function ensurePagesCacheForAdmin() {
+  if (ALL_PAGES_CACHE) return ALL_PAGES_CACHE;
+  if (!CFG.token) { ALL_PAGES_CACHE = []; return ALL_PAGES_CACHE; }
+  try {
+    const data = await fbGet('me/accounts', { fields: 'id,name', limit: 200 }, CFG.token);
+    ALL_PAGES_CACHE = dedupePages(data.data || []);
+  } catch (e) {
+    ALL_PAGES_CACHE = [];
+  }
+  return ALL_PAGES_CACHE;
+}
+
+function renderPagesCheckboxList(selectedPages) {
+  const el = document.getElementById('permPagesList');
+  const pages = ALL_PAGES_CACHE || [];
+  if (!pages.length) {
+    el.innerHTML = '<div class="empty-note">Chưa tải được danh sách Page (kiểm tra Token Facebook dùng chung ở trên).</div>';
+    return;
+  }
+  const allSelected = selectedPages === 'all';
+  el.innerHTML = pages.map(p => `
+    <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;">
+      <input type="checkbox" value="${p.id}" ${allSelected || (Array.isArray(selectedPages) && selectedPages.includes(p.id)) ? 'checked' : ''}>
+      ${escapeHtml(p.name)}
+    </label>
+  `).join('');
+}
+
+function togglePermPagesList() {
+  document.getElementById('permPagesList').style.display = document.getElementById('permAllPages').checked ? 'none' : 'flex';
+}
+
+async function openPermEditByUid(uid) {
+  const u = USERS_LIST_CACHE[uid];
+  if (!u) return;
+  PERM_EDIT_UID = uid;
+  document.getElementById('permEditName').textContent = u.name || u.email || uid;
+  setMsg('permEditMsg', 'Đang tải danh sách Page…', '');
+  await ensurePagesCacheForAdmin();
+  setMsg('permEditMsg', '', '');
+
+  const pagesAllSelected = !Array.isArray(u.allowedPages);
+  document.getElementById('permAllPages').checked = pagesAllSelected;
+  renderPagesCheckboxList(pagesAllSelected ? 'all' : u.allowedPages);
+  togglePermPagesList();
+
+  const viewsAllSelected = !Array.isArray(u.allowedViews);
+  document.getElementById('permViewDashboard').checked = viewsAllSelected || u.allowedViews.includes('dashboard');
+  document.getElementById('permViewAdvertising').checked = viewsAllSelected || u.allowedViews.includes('advertising');
+
+  const panelEl = document.getElementById('permEditPanel');
+  panelEl.hidden = false;
+  if (typeof panelEl.scrollIntoView === 'function') panelEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function closePermEdit() {
+  PERM_EDIT_UID = null;
+  document.getElementById('permEditPanel').hidden = true;
+}
+
+async function savePermEdit() {
+  if (!PERM_EDIT_UID) return;
+  const allPagesChecked = document.getElementById('permAllPages').checked;
+  const allowedPages = allPagesChecked
+    ? 'all'
+    : [...document.querySelectorAll('#permPagesList input:checked')].map(cb => cb.value);
+  if (!allPagesChecked && allowedPages.length === 0) {
+    setMsg('permEditMsg', 'Chọn ít nhất 1 Page, hoặc tick "Tất cả Page".', 'err');
+    return;
+  }
+  const dViews = [];
+  if (document.getElementById('permViewDashboard').checked) dViews.push('dashboard');
+  if (document.getElementById('permViewAdvertising').checked) dViews.push('advertising');
+  if (dViews.length === 0) {
+    setMsg('permEditMsg', 'Chọn ít nhất 1 trang (Dashboard hoặc Advertising).', 'err');
+    return;
+  }
+  const allowedViews = dViews.length === 2 ? 'all' : dViews; // chọn cả 2 = không giới hạn, cho gọn dữ liệu
+
+  setMsg('permEditMsg', 'Đang lưu…', '');
+  try {
+    await db.collection('users').doc(PERM_EDIT_UID).set({ allowedPages, allowedViews }, { merge: true });
+    setMsg('permEditMsg', 'Đã lưu quyền.', 'ok');
+    loadUsersList();
+    setTimeout(closePermEdit, 700);
+  } catch (e) {
+    setMsg('permEditMsg', 'Lỗi lưu quyền: ' + e.message, 'err');
+  }
+}
+
+/* ============================================================
    FACEBOOK API HELPERS
    ============================================================ */
 async function fbGet(path, params, token) {
@@ -1317,9 +1493,14 @@ async function initApp() {
   setStatus('Đang tải danh sách Page…');
   try {
     const data = await fbGet('me/accounts', { fields: 'id,name,access_token,category', limit: 200 }, CFG.token);
-    PAGES = dedupePages(data.data || []);
+    let allPages = dedupePages(data.data || []);
+    // Giới hạn danh sách Page theo quyền được Admin cấp cho user hiện tại (CURRENT_ALLOWED_PAGES) —
+    // 'all' (Admin, hoặc user chưa bị giới hạn) thì thấy hết; ngược lại chỉ thấy đúng các Page được chỉ định.
+    PAGES = (CURRENT_ALLOWED_PAGES === 'all') ? allPages : allPages.filter(p => CURRENT_ALLOWED_PAGES.includes(p.id));
     if (!PAGES.length) {
-      setStatus('Token này chưa được cấp quyền admin cho Page nào. Kiểm tra lại quyền pages_show_list.', true);
+      setStatus(CURRENT_ALLOWED_PAGES === 'all'
+        ? 'Token này chưa được cấp quyền admin cho Page nào. Kiểm tra lại quyền pages_show_list.'
+        : 'Bạn chưa được Admin cấp quyền xem Page nào. Liên hệ Admin để được cấp quyền.', true);
       showLoading(false);
       return;
     }
