@@ -115,22 +115,24 @@
 
   /* ---------- Header / page switcher ---------- */
   header.topbar {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
     padding: 22px 24px; flex-wrap: wrap;
     background: var(--header-grad); border-radius: 16px;
     box-shadow: var(--shadow-3d);
     margin-top: 16px;
   }
+  .topbar-left { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-width: 260px; }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 0 4px rgba(255,255,255,0.25); }
   .brand h1 { font-size: 18px; margin: 0; color: #fff; }
   .brand .who { font-size: 11.5px; color: rgba(255,255,255,0.78); margin-top: 2px; }
   .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-  /* ---------- Platform switcher (logo thật của app + chọn nền tảng, ở góc phải header) ----------
-     Bố cục xếp dọc: icon tròn mềm ở trên, "FACEBOOK" đậm bên dưới, "ANALYTICS REPORT ▾" nhỏ dưới
-     cùng — đúng theo ảnh mẫu người dùng gửi. */
-  .platform-switcher { position: relative; }
+  /* ---------- Platform switcher (logo thật của app + chọn nền tảng) ----------
+     Nằm bên phải header, kéo dài hết chiều cao để căn giữa theo cả khối tiêu đề + hàng điều khiển
+     bên trái (topbar-left) — đúng theo ảnh mẫu người dùng gửi. Bố cục xếp dọc: icon tròn mềm ở
+     trên, "FACEBOOK" đậm bên dưới, "ANALYTICS REPORT ▾" nhỏ dưới cùng. */
+  .platform-switcher { position: relative; flex: none; }
   .platform-btn {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
     background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28);
@@ -207,7 +209,7 @@
 
   /* ---------- In báo cáo ---------- */
   @media print {
-    header.topbar .controls, #statusLine, #adminNavBtn, .csv-btn, .toolbar2, .page-tabs { display: none !important; }
+    header.topbar .controls, header.topbar .platform-switcher, #statusLine, #adminNavBtn, .csv-btn, .toolbar2, .page-tabs { display: none !important; }
     body { background: #fff; }
     .kpi-card, .chart-card, .table-card { break-inside: avoid; }
   }
@@ -438,50 +440,54 @@
 <!-- ============ APP (dashboard + admin) ============ -->
 <div class="wrap" id="app" hidden>
   <header class="topbar">
-    <div class="brand">
-      <span class="dot"></span>
-      <div>
-        <h1>Social Performance — <span id="pageNameLabel">…</span></h1>
-        <div class="who">Xin chào, <span id="welcomeName"></span></div>
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <h1>Social Performance — <span id="pageNameLabel">…</span></h1>
+          <div class="who">Xin chào, <span id="welcomeName"></span></div>
+        </div>
+      </div>
+      <div class="controls">
+        <select id="pageSelect"></select>
+        <div class="range-picker" id="rangePicker">
+          <button data-days="7" onclick="setRangeDays(7)">7 ngày</button>
+          <button data-days="30" class="active" onclick="setRangeDays(30)">30 ngày</button>
+          <button data-days="90" onclick="setRangeDays(90)">90 ngày</button>
+        </div>
+        <button class="icon-btn" onclick="refreshAll()">&#x21bb; Làm mới</button>
+        <button class="icon-btn" onclick="window.print()">&#x1F5B6; In báo cáo</button>
+        <button class="icon-btn" id="adminNavBtn" hidden onclick="toggleAdminView()">Quản lý người dùng</button>
+        <button class="icon-btn" onclick="doLogout()">Đăng xuất</button>
       </div>
     </div>
-    <div class="controls">
-      <select id="pageSelect"></select>
-      <div class="range-picker" id="rangePicker">
-        <button data-days="7" onclick="setRangeDays(7)">7 ngày</button>
-        <button data-days="30" class="active" onclick="setRangeDays(30)">30 ngày</button>
-        <button data-days="90" onclick="setRangeDays(90)">90 ngày</button>
-      </div>
-      <button class="icon-btn" onclick="refreshAll()">&#x21bb; Làm mới</button>
-      <button class="icon-btn" onclick="window.print()">&#x1F5B6; In báo cáo</button>
-      <button class="icon-btn" id="adminNavBtn" hidden onclick="toggleAdminView()">Quản lý người dùng</button>
-      <button class="icon-btn" onclick="doLogout()">Đăng xuất</button>
 
-      <!-- Chọn nền tảng: hiện tại chỉ Facebook có dữ liệu thật; Instagram/TikTok/YouTube là chỗ đặt
-           trước cho giao diện, chưa nối API — bấm vào chỉ hiện ghi chú, không đổi dữ liệu đang xem. -->
-      <div class="platform-switcher" id="platformSwitcher">
-        <button class="platform-btn" id="platformBtn" onclick="togglePlatformMenu(event)">
-          <span class="platform-icon" data-icon="facebook"></span>
-          <span class="platform-name">FACEBOOK</span>
-          <span class="platform-sub-row">
-            <span class="platform-sub">Analytics Report</span>
-            <span class="platform-chevron">▾</span>
-          </span>
+    <!-- Chọn nền tảng: hiện tại chỉ Facebook có dữ liệu thật; Instagram/TikTok/YouTube là chỗ đặt
+         trước cho giao diện, chưa nối API — bấm vào chỉ hiện ghi chú, không đổi dữ liệu đang xem.
+         Nằm bên phải header, kéo dài hết chiều cao (căn giữa theo cột trái tiêu đề + hàng điều khiển)
+         — đúng theo ảnh mẫu người dùng gửi. -->
+    <div class="platform-switcher" id="platformSwitcher">
+      <button class="platform-btn" id="platformBtn" onclick="togglePlatformMenu(event)">
+        <span class="platform-icon" data-icon="facebook"></span>
+        <span class="platform-name">FACEBOOK</span>
+        <span class="platform-sub-row">
+          <span class="platform-sub">Analytics Report</span>
+          <span class="platform-chevron">▾</span>
+        </span>
+      </button>
+      <div class="platform-menu" id="platformMenu" hidden>
+        <button class="platform-item active" onclick="selectPlatform('Facebook', true)">
+          <span class="p-icon" data-icon="facebook"></span><span class="p-name">Facebook</span><span class="p-check">✓</span>
         </button>
-        <div class="platform-menu" id="platformMenu" hidden>
-          <button class="platform-item active" onclick="selectPlatform('Facebook', true)">
-            <span class="p-icon" data-icon="facebook"></span><span class="p-name">Facebook</span><span class="p-check">✓</span>
-          </button>
-          <button class="platform-item soon" onclick="selectPlatform('Instagram', false)">
-            <span class="p-icon" data-icon="instagram"></span><span class="p-name">Instagram</span><span class="soon-badge">Sắp có</span>
-          </button>
-          <button class="platform-item soon" onclick="selectPlatform('TikTok', false)">
-            <span class="p-icon" data-icon="tiktok"></span><span class="p-name">TikTok</span><span class="soon-badge">Sắp có</span>
-          </button>
-          <button class="platform-item soon" onclick="selectPlatform('YouTube', false)">
-            <span class="p-icon" data-icon="youtube"></span><span class="p-name">YouTube</span><span class="soon-badge">Sắp có</span>
-          </button>
-        </div>
+        <button class="platform-item soon" onclick="selectPlatform('Instagram', false)">
+          <span class="p-icon" data-icon="instagram"></span><span class="p-name">Instagram</span><span class="soon-badge">Sắp có</span>
+        </button>
+        <button class="platform-item soon" onclick="selectPlatform('TikTok', false)">
+          <span class="p-icon" data-icon="tiktok"></span><span class="p-name">TikTok</span><span class="soon-badge">Sắp có</span>
+        </button>
+        <button class="platform-item soon" onclick="selectPlatform('YouTube', false)">
+          <span class="p-icon" data-icon="youtube"></span><span class="p-name">YouTube</span><span class="soon-badge">Sắp có</span>
+        </button>
       </div>
     </div>
   </header>
