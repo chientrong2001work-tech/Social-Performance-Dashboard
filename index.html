@@ -127,27 +127,27 @@
   .brand .who { font-size: 11.5px; color: rgba(255,255,255,0.78); margin-top: 2px; }
   .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-  /* ---------- Platform switcher (logo + chọn nền tảng, ở góc phải header) ---------- */
+  /* ---------- Platform switcher (logo thật của app + chọn nền tảng, ở góc phải header) ---------- */
   .platform-switcher { position: relative; }
   .platform-btn {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
     background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28);
-    border-radius: 10px; padding: 6px 10px 6px 6px; cursor: pointer; color: #fff;
+    border-radius: 16px; padding: 14px 22px; cursor: pointer; color: #fff; min-width: 160px; height: 100%;
     transition: background .15s ease;
   }
   .platform-btn:hover { background: rgba(255,255,255,0.22); }
-  .platform-icon {
-    width: 30px; height: 30px; border-radius: 8px; background: #fff; display: flex;
-    align-items: center; justify-content: center; font-size: 16px; flex: none; box-shadow: var(--shadow-3d);
+  .platform-btn .platform-icon {
+    width: 42px; height: 42px; border-radius: 11px; flex: none; box-shadow: var(--shadow-3d); overflow: hidden;
   }
-  .platform-label { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
-  .platform-name { font-size: 11.5px; font-weight: 800; letter-spacing: .03em; }
-  .platform-sub { font-size: 9.5px; color: rgba(255,255,255,0.75); }
-  .platform-chevron { font-size: 9px; opacity: .85; margin-left: 1px; transition: transform .15s ease; }
+  .platform-btn .platform-icon svg { display: block; width: 42px; height: 42px; }
+  .platform-name { font-size: 14px; font-weight: 800; letter-spacing: .05em; }
+  .platform-sub-row { display: flex; align-items: center; gap: 4px; }
+  .platform-sub { font-size: 9.5px; color: rgba(255,255,255,0.75); letter-spacing: .04em; text-transform: uppercase; }
+  .platform-chevron { font-size: 9px; opacity: .85; transition: transform .15s ease; }
   .platform-btn.open .platform-chevron { transform: rotate(180deg); }
   .platform-menu {
     position: absolute; top: calc(100% + 8px); right: 0; background: var(--surface-1);
-    border-radius: 12px; box-shadow: var(--shadow-3d-hover); padding: 6px; min-width: 210px; z-index: 60;
+    border-radius: 12px; box-shadow: var(--shadow-3d-hover); padding: 6px; min-width: 220px; z-index: 60;
   }
   .platform-item {
     display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 9px; border-radius: 8px;
@@ -156,10 +156,8 @@
   .platform-item:hover { background: var(--page-plane); }
   .platform-item.active { background: var(--page-plane); font-weight: 700; }
   .platform-item.soon { opacity: .6; }
-  .platform-item .p-icon {
-    width: 26px; height: 26px; border-radius: 7px; background: var(--page-plane); display: flex;
-    align-items: center; justify-content: center; font-size: 14px; flex: none;
-  }
+  .platform-item .p-icon { width: 28px; height: 28px; border-radius: 8px; flex: none; overflow: hidden; }
+  .platform-item .p-icon svg { display: block; width: 28px; height: 28px; }
   .platform-item .p-name { flex: 1; }
   .platform-item .p-check { color: var(--good); font-size: 14px; font-weight: 700; }
   .platform-item .soon-badge {
@@ -461,25 +459,25 @@
            trước cho giao diện, chưa nối API — bấm vào chỉ hiện ghi chú, không đổi dữ liệu đang xem. -->
       <div class="platform-switcher" id="platformSwitcher">
         <button class="platform-btn" id="platformBtn" onclick="togglePlatformMenu(event)">
-          <span class="platform-icon">📘</span>
-          <span class="platform-label">
-            <span class="platform-name">FACEBOOK</span>
+          <span class="platform-icon" data-icon="facebook"></span>
+          <span class="platform-name">FACEBOOK</span>
+          <span class="platform-sub-row">
             <span class="platform-sub">Analytics Report</span>
+            <span class="platform-chevron">▾</span>
           </span>
-          <span class="platform-chevron">▾</span>
         </button>
         <div class="platform-menu" id="platformMenu" hidden>
           <button class="platform-item active" onclick="selectPlatform('Facebook', true)">
-            <span class="p-icon">📘</span><span class="p-name">Facebook</span><span class="p-check">✓</span>
+            <span class="p-icon" data-icon="facebook"></span><span class="p-name">Facebook</span><span class="p-check">✓</span>
           </button>
           <button class="platform-item soon" onclick="selectPlatform('Instagram', false)">
-            <span class="p-icon">📸</span><span class="p-name">Instagram</span><span class="soon-badge">Sắp có</span>
+            <span class="p-icon" data-icon="instagram"></span><span class="p-name">Instagram</span><span class="soon-badge">Sắp có</span>
           </button>
           <button class="platform-item soon" onclick="selectPlatform('TikTok', false)">
-            <span class="p-icon">🎵</span><span class="p-name">TikTok</span><span class="soon-badge">Sắp có</span>
+            <span class="p-icon" data-icon="tiktok"></span><span class="p-name">TikTok</span><span class="soon-badge">Sắp có</span>
           </button>
           <button class="platform-item soon" onclick="selectPlatform('YouTube', false)">
-            <span class="p-icon">▶️</span><span class="p-name">YouTube</span><span class="soon-badge">Sắp có</span>
+            <span class="p-icon" data-icon="youtube"></span><span class="p-name">YouTube</span><span class="soon-badge">Sắp có</span>
           </button>
         </div>
       </div>
@@ -789,6 +787,44 @@ function setMsg(elId, text, kind) {
    không đổi dữ liệu đang xem, chỉ hiện ghi chú. Sau này nối API thật thì viết logic đổi nguồn dữ
    liệu ngay trong hàm selectPlatform() bên dưới.
    ============================================================ */
+
+// Logo thật (dạng SVG vector, không phải emoji) của từng nền tảng — vẽ tay đơn giản, đủ để nhận
+// diện được thương hiệu, dùng cho cả nút lớn trên header lẫn các dòng trong menu chọn nền tảng.
+const PLATFORM_ICON_SVG = {
+  facebook: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="8" fill="#1877F2"></rect>
+    <path d="M20.8 20.1l.7-4.4h-4.2v-2.9c0-1.2.4-2.2 2.3-2.2h1.9V6.7c-.3 0-1.5-.1-2.8-.1-3.3 0-5.6 2-5.6 5.7v2.4h-3.8v4.4h3.8v10.7c.8.1 1.6.2 2.4.2s1.6-.1 2.4-.2V20.1h3.9z" fill="#fff"></path>
+  </svg>`,
+  instagram: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="igGrad" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#FEDA75"></stop>
+        <stop offset="35%" stop-color="#FA7E1E"></stop>
+        <stop offset="65%" stop-color="#D62976"></stop>
+        <stop offset="100%" stop-color="#962FBF"></stop>
+      </linearGradient>
+    </defs>
+    <rect width="32" height="32" rx="8" fill="url(#igGrad)"></rect>
+    <rect x="8" y="8" width="16" height="16" rx="5" fill="none" stroke="#fff" stroke-width="2"></rect>
+    <circle cx="16" cy="16" r="4.2" fill="none" stroke="#fff" stroke-width="2"></circle>
+    <circle cx="21.3" cy="10.7" r="1.3" fill="#fff"></circle>
+  </svg>`,
+  tiktok: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="8" fill="#010101"></rect>
+    <path d="M20.8 8.2c.6 1.7 1.9 3 3.6 3.5v2.9c-1.4-.1-2.7-.6-3.8-1.4v6.4c0 3.2-2.6 5.8-5.8 5.8s-5.8-2.6-5.8-5.8 2.6-5.8 5.8-5.8c.3 0 .6 0 .9.1v3c-.3-.1-.6-.2-.9-.2-1.6 0-2.9 1.3-2.9 2.9s1.3 2.9 2.9 2.9 2.9-1.3 2.9-2.9V6.9h3.1z" fill="#25F4EE" transform="translate(-0.7,0.4)"></path>
+    <path d="M20.8 8.2c.6 1.7 1.9 3 3.6 3.5v2.9c-1.4-.1-2.7-.6-3.8-1.4v6.4c0 3.2-2.6 5.8-5.8 5.8s-5.8-2.6-5.8-5.8 2.6-5.8 5.8-5.8c.3 0 .6 0 .9.1v3c-.3-.1-.6-.2-.9-.2-1.6 0-2.9 1.3-2.9 2.9s1.3 2.9 2.9 2.9 2.9-1.3 2.9-2.9V6.9h3.1z" fill="#FE2C55" transform="translate(0.7,-0.4)"></path>
+    <path d="M20.8 8.2c.6 1.7 1.9 3 3.6 3.5v2.9c-1.4-.1-2.7-.6-3.8-1.4v6.4c0 3.2-2.6 5.8-5.8 5.8s-5.8-2.6-5.8-5.8 2.6-5.8 5.8-5.8c.3 0 .6 0 .9.1v3c-.3-.1-.6-.2-.9-.2-1.6 0-2.9 1.3-2.9 2.9s1.3 2.9 2.9 2.9 2.9-1.3 2.9-2.9V6.9h3.1z" fill="#fff"></path>
+  </svg>`,
+  youtube: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="8" fill="#FF0000"></rect>
+    <polygon points="13,10 23,16 13,22" fill="#fff"></polygon>
+  </svg>`,
+};
+document.querySelectorAll('[data-icon]').forEach(el => {
+  const svg = PLATFORM_ICON_SVG[el.getAttribute('data-icon')];
+  if (svg) el.innerHTML = svg;
+});
+
 function togglePlatformMenu(e) {
   if (e) e.stopPropagation();
   const menu = document.getElementById('platformMenu');
