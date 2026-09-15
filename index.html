@@ -1016,7 +1016,7 @@ auth.onAuthStateChanged(async (user) => {
       showLoading(false);
       return;
     }
-    if (data.mustChangePassword) {
+    if (data.mustChangePassword && !wasPasswordAlreadyChangedLocally(user.uid)) {
       // Tài khoản vừa được Admin tạo bằng mật khẩu tạm — bắt đổi mật khẩu trước khi vào dashboard.
       PENDING_PW_USER = user;
       setMsg('forcePwError', '', '');
@@ -1066,6 +1066,17 @@ async function enterApp(user, data) {
   }
 }
 
+// Một vài tài khoản có Firestore Security Rules chỉ cho phép Admin ghi vào /users/{uid} (không cho
+// chính chủ tự ghi hồ sơ của mình) — nên bước lưu "đã đổi mật khẩu" (mustChangePassword:false) có thể
+// bị permission-denied dù mật khẩu đã đổi thành công bên Firebase Auth. Để không bắt người dùng bị kẹt
+// mãi ở màn hình đổi mật khẩu, ta ghi nhớ tạm trên trình duyệt này rằng họ đã đổi rồi.
+function wasPasswordAlreadyChangedLocally(uid) {
+  try { return localStorage.getItem('pwChanged_' + uid) === '1'; } catch (e) { return false; }
+}
+function markPasswordChangedLocally(uid) {
+  try { localStorage.setItem('pwChanged_' + uid, '1'); } catch (e) { /* ignore */ }
+}
+
 async function submitForcePasswordChange() {
   const pw1 = document.getElementById('newPw1').value;
   const pw2 = document.getElementById('newPw2').value;
@@ -1083,15 +1094,9 @@ async function submitForcePasswordChange() {
     return;
   }
   showLoading(true);
+  const user = PENDING_PW_USER;
   try {
-    await PENDING_PW_USER.updatePassword(pw1);
-    await db.collection('users').doc(PENDING_PW_USER.uid).set({ mustChangePassword: false }, { merge: true });
-    const freshDoc = await db.collection('users').doc(PENDING_PW_USER.uid).get();
-    const user = PENDING_PW_USER;
-    PENDING_PW_USER = null;
-    document.getElementById('newPw1').value = '';
-    document.getElementById('newPw2').value = '';
-    await enterApp(user, freshDoc.data());
+    await user.updatePassword(pw1);
   } catch (e) {
     showLoading(false);
     if (e.code === 'auth/requires-recent-login') {
@@ -1099,7 +1104,29 @@ async function submitForcePasswordChange() {
     } else {
       setMsg('forcePwError', 'Lỗi đổi mật khẩu: ' + translateAuthError(e.code), 'err');
     }
+    return;
   }
+  // Mật khẩu đã đổi thành công. Từ đây cố gắng lưu cờ mustChangePassword:false vào Firestore, nhưng nếu
+  // bị chặn quyền ghi thì vẫn cho vào app bình thường (không để người dùng bị kẹt lại màn hình này).
+  let freshData = null;
+  try {
+    await db.collection('users').doc(user.uid).set({ mustChangePassword: false }, { merge: true });
+    const freshDoc = await db.collection('users').doc(user.uid).get();
+    freshData = freshDoc.exists ? freshDoc.data() : { mustChangePassword: false };
+  } catch (writeErr) {
+    console.error('Không lưu được trạng thái đã đổi mật khẩu (có thể do Firestore Rules chưa cho phép tự ghi):', writeErr);
+    markPasswordChangedLocally(user.uid);
+    try {
+      const existingDoc = await db.collection('users').doc(user.uid).get();
+      freshData = Object.assign({}, existingDoc.exists ? existingDoc.data() : {}, { mustChangePassword: false });
+    } catch (readErr) {
+      freshData = { mustChangePassword: false };
+    }
+  }
+  PENDING_PW_USER = null;
+  document.getElementById('newPw1').value = '';
+  document.getElementById('newPw2').value = '';
+  await enterApp(user, freshData);
 }
 
 /* ============================================================
