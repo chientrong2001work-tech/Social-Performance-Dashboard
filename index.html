@@ -7,67 +7,76 @@
 <style>
   :root {
     color-scheme: light;
-    /* Brand chrome: dark green + beige (ABC Vietnam) */
-    --brand-dark:      #1f3d2b;
-    --brand-dark-2:    #2b5039;
-    --brand-accent:    #3a6b4a;
-    --page-plane:      #f6f3ea;   /* beige */
-    --surface-1:       #fffdf7;
-    --text-primary:    #17231b;
-    --text-secondary:  #52514e;
-    --muted:           #898781;
-    --gridline:        #e5e1d3;
-    --baseline:        #c9c4ab;
-    --border:          rgba(11,11,11,0.10);
-    --good:            #0ca30c;
-    --critical:        #d03b3b;
+    /* Brand chrome: blue theme (theo bố cục/màu ảnh mẫu) */
+    --brand-dark:      #1e3a8a;
+    --brand-dark-2:    #1d4ed8;
+    --brand-accent:    #2563eb;
+    --header-grad:     linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #38bdf8 100%);
+    --page-plane:      #eef3fc;   /* light blue */
+    --surface-1:       #ffffff;
+    --text-primary:    #0f1728;
+    --text-secondary:  #57657c;
+    --muted:           #94a3b8;
+    --gridline:        #e6ecf7;
+    --baseline:        #cdd8ec;
+    --border:          rgba(30,58,138,0.10);
+    --good:            #16a34a;
+    --critical:        #dc2626;
+    --shadow-3d:        0 10px 24px -8px rgba(30,64,175,0.22), 0 2px 6px -2px rgba(30,64,175,0.14);
+    --shadow-3d-hover:  0 18px 34px -10px rgba(30,64,175,0.30), 0 6px 12px -4px rgba(30,64,175,0.20);
     /* Validated categorical slots (dataviz skill reference palette) */
-    --series-reach:     #2a78d6; /* blue */
-    --series-engage:    #1baf7a; /* aqua */
-    --series-msg:       #eb6834; /* orange */
-    --series-spend:     #4a3aa7; /* violet */
+    --series-reach:     #2563eb; /* blue */
+    --series-engage:    #0ea5e9; /* sky */
+    --series-msg:       #f59e0b; /* amber */
+    --series-spend:     #7c3aed; /* violet */
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --brand-dark:      #14261a;
-      --brand-dark-2:    #1c3626;
-      --brand-accent:    #4c8360;
-      --page-plane:      #0d0d0c;
-      --surface-1:       #1a1a19;
-      --text-primary:    #ffffff;
-      --text-secondary:  #c3c2b7;
-      --muted:           #898781;
-      --gridline:        #2c2c2a;
-      --baseline:        #383835;
+      --brand-dark:      #0b1d4d;
+      --brand-dark-2:    #1e3a8a;
+      --brand-accent:    #3b82f6;
+      --header-grad:     linear-gradient(135deg, #0b1d4d 0%, #1e3a8a 55%, #2563eb 100%);
+      --page-plane:      #0b0f19;
+      --surface-1:       #131a2a;
+      --text-primary:    #f2f5fb;
+      --text-secondary:  #aab4c8;
+      --muted:           #7c8aa3;
+      --gridline:        #202a3f;
+      --baseline:        #2b3650;
       --border:          rgba(255,255,255,0.10);
-      --good:            #0ca30c;
-      --critical:        #e66767;
-      --series-reach:    #3987e5;
-      --series-engage:   #199e70;
-      --series-msg:      #d95926;
-      --series-spend:    #9085e9;
+      --good:            #22c55e;
+      --critical:        #f87171;
+      --shadow-3d:        0 10px 24px -8px rgba(0,0,0,0.45), 0 2px 6px -2px rgba(0,0,0,0.3);
+      --shadow-3d-hover:  0 18px 34px -10px rgba(0,0,0,0.55), 0 6px 12px -4px rgba(0,0,0,0.4);
+      --series-reach:    #60a5fa;
+      --series-engage:   #38bdf8;
+      --series-msg:      #fbbf24;
+      --series-spend:    #a78bfa;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --brand-dark:      #14261a;
-    --brand-dark-2:    #1c3626;
-    --brand-accent:    #4c8360;
-    --page-plane:      #0d0d0c;
-    --surface-1:       #1a1a19;
-    --text-primary:    #ffffff;
-    --text-secondary:  #c3c2b7;
-    --muted:           #898781;
-    --gridline:        #2c2c2a;
-    --baseline:        #383835;
+    --brand-dark:      #0b1d4d;
+    --brand-dark-2:    #1e3a8a;
+    --brand-accent:    #3b82f6;
+    --header-grad:     linear-gradient(135deg, #0b1d4d 0%, #1e3a8a 55%, #2563eb 100%);
+    --page-plane:      #0b0f19;
+    --surface-1:       #131a2a;
+    --text-primary:    #f2f5fb;
+    --text-secondary:  #aab4c8;
+    --muted:           #7c8aa3;
+    --gridline:        #202a3f;
+    --baseline:        #2b3650;
     --border:          rgba(255,255,255,0.10);
-    --good:            #0ca30c;
-    --critical:        #e66767;
-    --series-reach:    #3987e5;
-    --series-engage:   #199e70;
-    --series-msg:      #d95926;
-    --series-spend:    #9085e9;
+    --good:            #22c55e;
+    --critical:        #f87171;
+    --shadow-3d:        0 10px 24px -8px rgba(0,0,0,0.45), 0 2px 6px -2px rgba(0,0,0,0.3);
+    --shadow-3d-hover:  0 18px 34px -10px rgba(0,0,0,0.55), 0 6px 12px -4px rgba(0,0,0,0.4);
+    --series-reach:    #60a5fa;
+    --series-engage:   #38bdf8;
+    --series-msg:      #fbbf24;
+    --series-spend:    #a78bfa;
   }
 
   * { box-sizing: border-box; }
@@ -107,20 +116,36 @@
   /* ---------- Header / page switcher ---------- */
   header.topbar {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 18px 0 14px; flex-wrap: wrap;
+    padding: 22px 24px; flex-wrap: wrap;
+    background: var(--header-grad); border-radius: 16px;
+    box-shadow: var(--shadow-3d);
+    margin-top: 16px;
   }
   .brand { display: flex; align-items: center; gap: 10px; }
-  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand-accent); }
-  .brand h1 { font-size: 17px; margin: 0; }
-  .brand .who { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 0 4px rgba(255,255,255,0.25); }
+  .brand h1 { font-size: 18px; margin: 0; color: #fff; }
+  .brand .who { font-size: 11.5px; color: rgba(255,255,255,0.78); margin-top: 2px; }
   .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   select, .icon-btn {
-    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+    background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.28);
     border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
   }
-  .range-label { font-size: 12px; color: var(--muted); }
-  #statusLine { font-size: 12px; color: var(--muted); margin-bottom: 10px; min-height: 16px; }
+  select option { color: var(--text-primary); }
+  .icon-btn:hover { background: rgba(255,255,255,0.26); transform: translateY(-1px); }
+  .range-label { font-size: 12px; color: rgba(255,255,255,0.8); }
+  #statusLine { font-size: 12px; color: var(--muted); margin: 10px 2px; min-height: 16px; }
   #statusLine.err { color: var(--critical); }
+
+  /* ---------- Page tabs (Dashboard / Advertising / Explain the metrics) ---------- */
+  .page-tabs { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .page-tabs .tab-item {
+    background: var(--surface-1); color: var(--text-secondary); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+    box-shadow: var(--shadow-3d); transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
+  }
+  .page-tabs .tab-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-3d-hover); }
+  .page-tabs .tab-item.active { background: var(--header-grad); color: #fff; border-color: transparent; }
 
   /* ---------- Range picker (7/30/90 ngày) ---------- */
   .range-picker { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -142,24 +167,38 @@
 
   /* ---------- In báo cáo ---------- */
   @media print {
-    header.topbar .controls, #statusLine, #adminNavBtn, .csv-btn, .toolbar2 { display: none !important; }
+    header.topbar .controls, #statusLine, #adminNavBtn, .csv-btn, .toolbar2, .page-tabs { display: none !important; }
     body { background: #fff; }
     .kpi-card, .chart-card, .table-card { break-inside: avoid; }
   }
 
+  /* ---------- 3D hover-grow (dùng chung cho card/biểu đồ/bảng) ---------- */
+  @keyframes valuePop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .card-3d {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-3d);
+    transition: transform .22s cubic-bezier(.2,.8,.3,1.2), box-shadow .22s ease;
+    will-change: transform;
+  }
+  .card-3d:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: var(--shadow-3d-hover);
+    z-index: 2;
+  }
+
   /* ---------- KPI row ---------- */
-  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
   @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
   .kpi-card {
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
     padding: 14px 16px;
   }
   .kpi-card .icon {
-    width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 13px; margin-bottom: 8px; background: var(--page-plane); color: var(--brand-accent);
+    width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; margin-bottom: 8px; background: var(--page-plane); color: var(--brand-accent);
+    box-shadow: inset 0 0 0 1px var(--border);
   }
   .kpi-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .02em; font-weight: 600; }
-  .kpi-card .value { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .kpi-card .value { font-size: 24px; font-weight: 700; line-height: 1.1; animation: valuePop .45s ease; }
   .kpi-card .delta { font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
   .kpi-card .delta.good { color: var(--good); }
   .kpi-card .delta.bad { color: var(--critical); }
@@ -215,8 +254,11 @@
   .funnel-step .fbar {
     height: 26px; border-radius: 6px; background: var(--series-reach); color: #fff;
     display: flex; align-items: center; padding: 0 10px; font-size: 12px; font-weight: 600;
-    white-space: nowrap; min-width: 44px;
+    white-space: nowrap; min-width: 44px; cursor: pointer;
+    transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+    transform-origin: left center;
   }
+  .funnel-step .fbar:hover { transform: scaleY(1.18); filter: brightness(1.08); box-shadow: var(--shadow-3d); }
   .funnel-step .flabel { font-size: 12px; color: var(--text-secondary); width: 90px; flex: none; }
   .funnel-step .fpct { font-size: 12px; color: var(--muted); flex: none; }
   .ctype-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 12px; }
@@ -226,19 +268,32 @@
   .ctype-row .ctype-val { flex: none; width: 96px; text-align: right; color: var(--muted); }
 
   /* ---------- Trend charts (small multiples) ---------- */
-  .section-title { font-size: 14px; font-weight: 700; margin: 26px 0 10px; }
-  .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  @media (max-width: 900px) { .chart-row { grid-template-columns: 1fr; } }
+  .section-title { font-size: 14px; font-weight: 700; margin: 26px 0 10px; color: var(--text-primary); }
+  .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
   .chart-card {
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
     padding: 14px 14px 8px;
+    overflow: visible;
   }
   .chart-card .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
   .chart-card .chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-  .bar { fill: var(--series-reach); }
+  .bar {
+    fill: var(--series-reach); cursor: pointer;
+    transition: transform .15s ease, filter .15s ease, opacity .15s ease;
+    transform-box: fill-box; transform-origin: center bottom;
+  }
+  .bar:hover { transform: scale(1.12, 1.08); filter: brightness(1.12); opacity: .95; }
   .gridline { stroke: var(--gridline); stroke-width: 1; }
   .baseline { stroke: var(--baseline); stroke-width: 1; }
   .axis-label { fill: var(--muted); font-size: 9px; font-family: system-ui, sans-serif; }
+  .dot { transition: r .15s ease, filter .15s ease; cursor: pointer; }
+  .dot:hover { r: 5; filter: brightness(1.15); }
+  .donut-seg {
+    stroke-width: 16;
+    transform-box: fill-box; transform-origin: center;
+    transition: stroke-width .18s ease, opacity .18s ease, transform .18s ease;
+    cursor: pointer;
+  }
+  .donut-seg:hover { stroke-width: 20; opacity: .85; transform: scale(1.05); }
   .tooltip {
     position: absolute; pointer-events: none; background: var(--brand-dark); color: #fff;
     font-size: 11px; padding: 5px 8px; border-radius: 6px; opacity: 0; transition: opacity .08s;
@@ -246,19 +301,30 @@
   }
 
   /* ---------- Tables ---------- */
-  .table-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .table-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 900px) { .table-row { grid-template-columns: 1fr; } }
   .table-card {
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
     padding: 14px; overflow-x: auto;
   }
   .table-card .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  tbody tr { transition: background .12s ease; }
+  tbody tr:hover { background: var(--page-plane); }
   table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--gridline); }
   th { color: var(--text-secondary); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   td.msg-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .empty-note { color: var(--muted); font-size: 12.5px; padding: 10px 0; }
+
+  /* ---------- Explain the metrics ---------- */
+  .metric-def { margin: 16px 0; padding-bottom: 14px; border-bottom: 1px solid var(--gridline); }
+  .metric-def:last-child { border-bottom: none; padding-bottom: 0; }
+  .metric-def h4 { margin: 0 0 6px; font-size: 14px; color: var(--text-primary); }
+  .metric-def .formula {
+    font-size: 12px; color: var(--brand-accent); font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    background: var(--page-plane); display: inline-block; padding: 3px 9px; border-radius: 6px; margin-bottom: 6px;
+  }
+  .metric-def p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
 
   footer.foot { margin-top: 34px; font-size: 11.5px; color: var(--muted); text-align: center; }
   footer.foot a { color: var(--brand-accent); }
@@ -330,9 +396,16 @@
       <button class="icon-btn" onclick="doLogout()">Đăng xuất</button>
     </div>
   </header>
+
+  <nav class="page-tabs" id="pageTabs">
+    <button class="tab-item active" data-view="dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+    <button class="tab-item" data-view="advertising" onclick="switchView('advertising')">📢 Advertising</button>
+    <button class="tab-item" data-view="metrics" onclick="switchView('metrics')">📖 Explain the metrics</button>
+  </nav>
+
   <div id="statusLine"></div>
 
-  <div class="toolbar2">
+  <div class="toolbar2" id="toolbar2">
     <label for="customSince">Từ</label>
     <input type="date" id="customSince" onchange="setCustomRange()">
     <label for="customUntil">Đến</label>
@@ -351,8 +424,6 @@
     <div class="kpi-row" id="kpiRow"></div>
     <div class="section-title">Bài viết nổi bật</div>
     <div class="kpi-row" id="kpiRow2"></div>
-    <div class="section-title">Quảng cáo (Ads)</div>
-    <div class="kpi-row" id="kpiRowAds"></div>
 
     <div class="section-title" id="trendTitle">Xu hướng 30 ngày gần nhất</div>
     <div class="chart-row" id="chartRow"></div>
@@ -360,12 +431,12 @@
 
     <div class="section-title">Marketing Funnel &amp; Loại nội dung</div>
     <div class="funnel-row">
-      <div class="table-card">
+      <div class="table-card card-3d">
         <div class="chart-title">Marketing Funnel</div>
         <div class="chart-sub">Từ Views đến Engagement</div>
         <div id="funnelBox" style="margin-top:10px;"></div>
       </div>
-      <div class="table-card">
+      <div class="table-card card-3d">
         <div class="chart-title">Loại nội dung</div>
         <div class="chart-sub">Tỷ trọng Views theo loại nội dung</div>
         <div id="ctypeBox" style="margin-top:10px;"></div>
@@ -373,27 +444,143 @@
     </div>
 
     <div class="section-title">Chi tiết</div>
-    <div class="table-row">
-      <div class="table-card">
-        <div class="card-head">
-          <div class="chart-title">Bài đăng — Views cao nhất (organic)</div>
-          <button class="csv-btn" onclick="exportPostsCSV()">&#x2B07; Xuất CSV</button>
-        </div>
-        <div id="postsTable"></div>
+    <div class="table-card card-3d">
+      <div class="card-head">
+        <div class="chart-title">Bài đăng — Views cao nhất (organic)</div>
+        <button class="csv-btn" onclick="exportPostsCSV()">&#x2B07; Xuất CSV</button>
       </div>
-      <div class="table-card">
-        <div class="card-head">
-          <div class="chart-title">Chiến dịch quảng cáo (theo Cost / Message)</div>
-          <button class="csv-btn" onclick="exportCampaignsCSV()">&#x2B07; Xuất CSV</button>
-        </div>
-        <div id="campaignsTable"></div>
+      <div id="postsTable"></div>
+    </div>
+  </div>
+
+  <div id="advertisingView" hidden>
+    <div class="section-title" style="margin-top:0;">Quảng cáo (Ads)</div>
+    <div class="kpi-row" id="kpiRowAds"></div>
+    <div class="section-title">Chi tiết chiến dịch</div>
+    <div class="table-card card-3d">
+      <div class="card-head">
+        <div class="chart-title">Chiến dịch quảng cáo (theo Cost / Message)</div>
+        <button class="csv-btn" onclick="exportCampaignsCSV()">&#x2B07; Xuất CSV</button>
+      </div>
+      <div id="campaignsTable"></div>
+    </div>
+  </div>
+
+  <div id="metricsView" hidden>
+    <div class="section-title" style="margin-top:0;">Giải thích chỉ số — Hiệu suất tổng thể</div>
+    <div class="table-card card-3d">
+      <div class="metric-def">
+        <h4>👁 Total Views</h4>
+        <div class="formula">Tổng lượt xem/hiển thị của tất cả bài đăng trong khoảng thời gian</div>
+        <p>Tổng số lần nội dung (ảnh/video/bài viết) được hiển thị, tính luôn cả trường hợp 1 người xem lại nhiều lần. Cộng dồn từ "Views" của từng bài đăng riêng lẻ.</p>
+      </div>
+      <div class="metric-def">
+        <h4>📶 Reach</h4>
+        <div class="formula">Số người khác nhau (unique) đã nhìn thấy nội dung của Trang</div>
+        <p>Khác với Views: 1 người xem đi xem lại nhiều lần vẫn chỉ tính Reach = 1. Đây là số liệu <b>cấp Trang</b> (không tách riêng theo từng bài) do Facebook chỉ cho phép lấy Reach ở mức Trang qua API công khai.</p>
+      </div>
+      <div class="metric-def">
+        <h4>💬 Engagement</h4>
+        <div class="formula">Tổng lượt tương tác cấp Trang trong khoảng thời gian (page_post_engagements)</div>
+        <p>Gồm reaction, bình luận, chia sẻ, click... trên các bài đăng của Trang, lấy từ chỉ số Page Insights cấp Trang.</p>
+      </div>
+      <div class="metric-def">
+        <h4>🖱 Clicks</h4>
+        <div class="formula">Tổng số lượt click trên bài đăng (post_clicks), cộng dồn theo từng bài</div>
+        <p>Số lượt người dùng click vào bài đăng (ảnh, link, "Xem thêm"...), cộng dồn từ dữ liệu từng bài trong khoảng thời gian đã chọn.</p>
+      </div>
+      <div class="metric-def">
+        <h4>👥 Follower Growth</h4>
+        <div class="formula">Số người theo dõi cuối kỳ − Số người theo dõi đầu kỳ</div>
+        <p>Tăng trưởng người theo dõi <b>ròng</b> trong khoảng thời gian đã chọn — số dương (+) nghĩa là tăng, số âm (-) nghĩa là giảm (mất người theo dõi nhiều hơn số mới thêm).</p>
+      </div>
+      <div class="metric-def">
+        <h4>🎬 Watch Time</h4>
+        <div class="formula">Tổng thời gian xem video của Trang (page_video_view_time), quy đổi ra phút/giờ</div>
+        <p>Tổng cộng dồn thời gian (mili-giây → phút/giờ) mà mọi người đã dành để xem video/reel của Trang trong khoảng thời gian đã chọn.</p>
+      </div>
+      <div class="metric-def">
+        <h4>📝 Số bài đăng</h4>
+        <div class="formula">Đếm số bài đăng được tạo trong khoảng thời gian đã chọn</div>
+        <p>Số lượng bài viết (mọi định dạng: ảnh, video, album, text...) mà Trang đã đăng trong khoảng ngày đang xem.</p>
+      </div>
+    </div>
+
+    <div class="section-title">Giải thích chỉ số — Bài viết nổi bật</div>
+    <div class="table-card card-3d">
+      <div class="metric-def">
+        <h4>🏆 Bài Top (nhiều Views nhất)</h4>
+        <div class="formula">max(Views) trong các bài đăng thuộc khoảng thời gian</div>
+        <p>Bài đăng có lượt xem cao nhất trong khoảng thời gian đang xem, kèm ngày đăng và trích đoạn nội dung.</p>
+      </div>
+      <div class="metric-def">
+        <h4>🕒 Giờ đăng tốt nhất</h4>
+        <div class="formula">Giờ trong ngày có trung bình Views/bài cao nhất</div>
+        <p>Gom tất cả bài đăng theo giờ đăng (0h–23h), tính Views trung bình mỗi giờ, chọn giờ có trung bình cao nhất — gợi ý khung giờ nên đăng bài.</p>
+      </div>
+      <div class="metric-def">
+        <h4>📅 Ngày đăng tốt nhất</h4>
+        <div class="formula">Thứ trong tuần có trung bình Views/bài cao nhất</div>
+        <p>Tương tự Giờ đăng tốt nhất nhưng gom theo thứ trong tuần (Thứ 2 → Chủ nhật).</p>
+      </div>
+      <div class="metric-def">
+        <h4>▶️ Total Watch (Video/Reel)</h4>
+        <div class="formula">Đếm số bài có loại nội dung = Video hoặc Reel</div>
+        <p>Số lượng bài đăng dạng video/reel trong khoảng thời gian — không phải thời gian xem (xem chỉ số Watch Time ở trên cho thời gian xem thực tế).</p>
+      </div>
+    </div>
+
+    <div class="section-title">Giải thích chỉ số — Marketing Funnel &amp; Loại nội dung</div>
+    <div class="table-card card-3d">
+      <div class="metric-def">
+        <h4>Marketing Funnel: Views → Reach → Engaged → Clicks</h4>
+        <div class="formula">Mỗi bước hiển thị % so với bước đầu tiên (Views = 100%)</div>
+        <p>Views/Engaged/Clicks cộng dồn theo từng bài đăng; riêng Reach trong funnel dùng Reach <b>cấp Trang</b> (không phải cộng theo bài) vì Facebook không cho lấy Reach riêng từng bài qua API công khai. Phễu giúp thấy tỷ lệ "rơi rụng" qua từng bước: bao nhiêu % người thấy bài (Reach) rồi tương tác lại (Engaged).</p>
+      </div>
+      <div class="metric-def">
+        <h4>Loại nội dung (biểu đồ tròn)</h4>
+        <div class="formula">Tỷ trọng Views của mỗi loại nội dung ÷ Tổng Views tất cả loại</div>
+        <p>Phân loại bài đăng theo định dạng (Ảnh, Video, Album, Reel, Text, Link...) và so sánh loại nào đang mang lại nhiều lượt xem nhất.</p>
+      </div>
+    </div>
+
+    <div class="section-title">Giải thích chỉ số — Bảng "Bài đăng"</div>
+    <div class="table-card card-3d">
+      <div class="metric-def">
+        <h4>Views / Engaged / Clicks (theo từng bài)</h4>
+        <div class="formula">Engaged = Reactions + Comments + Shares (của riêng bài đó)</div>
+        <p>Views và Clicks lấy trực tiếp theo từng bài qua API. Engaged là số thật tính từ lượt thả cảm xúc + bình luận + chia sẻ của chính bài đăng đó (không phải ước tính).</p>
+      </div>
+    </div>
+
+    <div class="section-title">Giải thích chỉ số — Quảng cáo (Ads)</div>
+    <div class="table-card card-3d">
+      <div class="metric-def">
+        <h4>💰 Chi phí Ads</h4>
+        <div class="formula">Tổng chi phí (spend) của mọi chiến dịch trong tài khoản quảng cáo, theo khoảng thời gian</div>
+        <p>Không lọc riêng theo Page — tài khoản Ads có thể chạy quảng cáo cho nhiều Page/sản phẩm khác nhau.</p>
+      </div>
+      <div class="metric-def">
+        <h4>✉️ Messages Started</h4>
+        <div class="formula">Số cuộc trò chuyện Messenger được bắt đầu từ quảng cáo (actions: messaging_conversation_started)</div>
+        <p>Đếm số người bắt đầu nhắn tin qua Messenger nhờ click vào quảng cáo.</p>
+      </div>
+      <div class="metric-def">
+        <h4>⚖️ Cost / Message</h4>
+        <div class="formula">Tổng chi phí ÷ Tổng Messages Started</div>
+        <p>Chi phí trung bình để có được 1 cuộc trò chuyện Messenger mới — càng thấp càng hiệu quả.</p>
+      </div>
+      <div class="metric-def">
+        <h4>CTR (trong bảng chiến dịch)</h4>
+        <div class="formula">Clicks ÷ Impressions × 100%</div>
+        <p>Tỷ lệ người xem quảng cáo có click vào — chỉ số phổ biến để đánh giá độ hấp dẫn của quảng cáo.</p>
       </div>
     </div>
   </div>
 
   <div id="adminView" hidden>
-    <div class="section-title">Token Facebook dùng chung</div>
-    <div class="table-card" style="margin-bottom:18px;max-width:480px;">
+    <div class="section-title" style="margin-top:0;">Token Facebook dùng chung</div>
+    <div class="table-card card-3d" style="margin-bottom:18px;max-width:480px;">
       <div class="field">
         <label for="cfgToken">Access Token</label>
         <input id="cfgToken" type="password" placeholder="EAAxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
@@ -408,7 +595,7 @@
     </div>
 
     <div class="section-title">Thêm người dùng mới</div>
-    <div class="table-card" style="margin-bottom:18px;max-width:480px;">
+    <div class="table-card card-3d" style="margin-bottom:18px;max-width:480px;">
       <div class="field">
         <label for="newUserName">Họ tên</label>
         <input id="newUserName" type="text" placeholder="Nguyễn Văn A">
@@ -427,7 +614,7 @@
     </div>
 
     <div class="section-title">Danh sách người dùng</div>
-    <div class="table-card">
+    <div class="table-card card-3d">
       <div id="usersTable"></div>
     </div>
   </div>
@@ -461,7 +648,7 @@ const db = firebase.firestore();
 
 let CURRENT_USER = null;   // firebase auth user object
 let CURRENT_ROLE = null;   // 'admin' | 'viewer'
-let showingAdmin = false;
+let CURRENT_VIEW = 'dashboard'; // 'dashboard' | 'advertising' | 'metrics' | 'admin'
 
 /* ============================================================
    CONFIG (shared Facebook token, loaded from Firestore)
@@ -596,18 +783,37 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 /* ============================================================
-   ADMIN VIEW TOGGLE
+   PAGE SWITCHING (Dashboard / Advertising / Explain the metrics / Admin)
    ============================================================ */
-function toggleAdminView() {
-  showingAdmin = !showingAdmin;
-  document.getElementById('dashboardView').hidden = showingAdmin;
-  document.getElementById('adminView').hidden = !showingAdmin;
-  document.getElementById('adminNavBtn').textContent = showingAdmin ? '← Về Dashboard' : 'Quản lý người dùng';
-  if (showingAdmin) {
+// Trang nào cần thanh lọc ngày (toolbar2) — Dashboard & Advertising đều phụ thuộc khoảng thời gian
+// đang chọn; Explain the metrics và Admin thì không.
+const VIEWS_WITH_DATE_FILTER = ['dashboard', 'advertising'];
+
+function renderView() {
+  document.getElementById('dashboardView').hidden = CURRENT_VIEW !== 'dashboard';
+  document.getElementById('advertisingView').hidden = CURRENT_VIEW !== 'advertising';
+  document.getElementById('metricsView').hidden = CURRENT_VIEW !== 'metrics';
+  document.getElementById('adminView').hidden = CURRENT_VIEW !== 'admin';
+  document.getElementById('toolbar2').style.display = VIEWS_WITH_DATE_FILTER.includes(CURRENT_VIEW) ? '' : 'none';
+  document.querySelectorAll('#pageTabs .tab-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === CURRENT_VIEW);
+  });
+  document.getElementById('adminNavBtn').textContent = CURRENT_VIEW === 'admin' ? '← Về Dashboard' : 'Quản lý người dùng';
+}
+
+function switchView(view) {
+  CURRENT_VIEW = view;
+  renderView();
+  if (view === 'admin') {
     document.getElementById('cfgToken').value = CFG.token || '';
     document.getElementById('cfgAdAccount').value = CFG.adAccountId || '';
     loadUsersList();
   }
+}
+
+// Giữ tên hàm cũ (nút "Quản lý người dùng" trong header) — bấm để bật/tắt trang Admin.
+function toggleAdminView() {
+  switchView(CURRENT_VIEW === 'admin' ? 'dashboard' : 'admin');
 }
 
 /* ============================================================
@@ -964,9 +1170,9 @@ function exportPostsCSV() {
     setStatus('Chưa có dữ liệu bài đăng để xuất CSV.', true);
     return;
   }
-  const header = ['Ngày đăng', 'Nội dung', 'Loại', 'Views', 'Reach', 'Clicks'];
+  const header = ['Ngày đăng', 'Nội dung', 'Loại', 'Views', 'Engaged', 'Clicks'];
   const rows = LAST_TOP_POSTS.map(p => [
-    p.date, p.message, MEDIA_TYPE_LABELS[p.mediaType] || p.mediaType, p.views, p.reach, p.clicks ?? '',
+    p.date, p.message, MEDIA_TYPE_LABELS[p.mediaType] || p.mediaType, p.views, p.engaged ?? '', p.clicks ?? '',
   ]);
   downloadCSV(`bai-dang_${CURRENT_PAGE?.name || 'page'}_${fmtDate(new Date())}.csv`, [header, ...rows]);
 }
@@ -1312,7 +1518,7 @@ function deltaHtml(pct) {
 
 function kpiCardHtml(c) {
   return `
-    <div class="kpi-card">
+    <div class="kpi-card card-3d">
       ${c.icon ? `<div class="icon">${c.icon}</div>` : ''}
       <div class="label">${c.label}</div>
       <div class="value">${c.value}</div>
@@ -1336,15 +1542,6 @@ function renderKPIs(cur, prev, ads, agg) {
   const postsNote = `<span class="delta flat">Không lấy được dữ liệu bài đăng</span>`;
   const postCountLabel = agg ? `<span class="delta flat">Từ ${fmtNum(agg.postCount)} bài đăng</span>` : postsNote;
 
-  // Eng. Rate = Engaged (thật, theo từng bài) / Reach. Reach THEO TỪNG BÀI hiện bị Facebook chặn qua
-  // API (post_total_media_view_unique luôn = 0) nên agg.engRate (tính trên tổng reach-theo-bài) sẽ
-  // luôn null — dùng tạm Reach TỔNG CẤP TRANG (reachCur, cùng nguồn với ô KPI "Reach" bên trên) làm
-  // mẫu số thay thế, vì đó là ước lượng reach tốt nhất hiện có qua API công khai.
-  const hasEngagedTotal = agg && agg.totalEngagedFromPosts != null;
-  const effectiveEngRate = hasEngagedTotal && reachCur
-    ? (agg.totalEngagedFromPosts / reachCur * 100)
-    : (agg ? agg.engRate : null);
-
   // Follower Growth & Watch Time: metric cấp Trang, lấy cùng lúc với Reach/Engagement trong
   // loadOrganicSeries (xem ghi chú ở đó) — null nếu Facebook chặn/khai tử hết các metric ứng viên.
   const followerGrowthCur = cur?.error ? null : cur?.followerGrowth;
@@ -1360,7 +1557,6 @@ function renderKPIs(cur, prev, ads, agg) {
     { icon: '📶', label: 'Reach', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
     { icon: '💬', label: 'Engagement', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
     { icon: '🖱', label: 'Clicks', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : apiNote },
-    { icon: '📈', label: 'Eng. Rate', value: (effectiveEngRate != null) ? effectiveEngRate.toFixed(1) + '%' : '—', delta: (effectiveEngRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : apiNote },
     { icon: '👥', label: 'Follower Growth', value: (followerGrowthCur != null) ? fmtSigned(followerGrowthCur) : '—', delta: (followerGrowthCur != null) ? deltaHtml(pctDelta(followerGrowthCur, followerGrowthPrev)) : followerNote },
     { icon: '🎬', label: 'Watch Time', value: (watchTimeCur != null) ? fmtDuration(watchTimeCur) : '—', delta: (watchTimeCur != null) ? deltaHtml(pctDelta(watchTimeCur, watchTimePrev)) : watchTimeNote },
     { icon: '📝', label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${DISPLAY_RANGE_DAYS} ngày</span>` },
@@ -1390,7 +1586,7 @@ function renderKPIs2(agg) {
     { icon: '▶️', label: 'Total Watch (Video/Reel)', value: fmtNum(agg.videoLikeCount), sub: 'Số bài video & reel' },
   ];
   el.innerHTML = cards.map(c => `
-    <div class="kpi-card mini">
+    <div class="kpi-card mini card-3d">
       <div class="icon">${c.icon}</div>
       <div class="label">${c.label}</div>
       <div class="value">${c.value}${c.sub ? `<span class="sub">${escapeHtml(c.sub)}</span>` : ''}</div>
@@ -1424,7 +1620,6 @@ function renderCharts(organicCur, ads, agg) {
   const organicUnavailable = !!organicCur?.error;
   const reachSeries = organicUnavailable ? {} : organicCur.reach;
   const engSeries = organicUnavailable ? {} : organicCur.engagement;
-  const msgSeries = buildAdsDailySeries(ads);
 
   const row = document.getElementById('chartRow');
   row.innerHTML = '';
@@ -1432,7 +1627,6 @@ function renderCharts(organicCur, ads, agg) {
     organicUnavailable ? 'Facebook đã ngừng hỗ trợ chỉ số organic này qua API cho Trang này.' : null));
   row.appendChild(barChartCard('Engagement hàng ngày (organic)', bucketSeries(engSeries, GRANULARITY), 'var(--series-engage)', false,
     organicUnavailable ? 'Facebook đã ngừng hỗ trợ chỉ số organic này qua API cho Trang này.' : null));
-  row.appendChild(barChartCard('Messages Started / ngày (ước tính)', bucketSeries(msgSeries, GRANULARITY), 'var(--series-msg)', true));
 
   const row2 = document.getElementById('chartRow2');
   row2.innerHTML = '';
@@ -1468,23 +1662,9 @@ function buildCumulativeSeries(dailyViews) {
   return out;
 }
 
-// Ads Insights (level=campaign, no time increment) doesn't give a daily breakdown in loadAdsData;
-// approximate a flat daily average line so the chart still communicates the 30-day total context.
-function buildAdsDailySeries(ads) {
-  if (!ads || ads.error) return {};
-  const days = 30;
-  const perDay = (ads.totalMessages || 0) / days;
-  const out = {};
-  for (let i = days - 1; i >= 0; i--) {
-    const d = fmtDate(daysAgo(i));
-    out[d] = perDay;
-  }
-  return out;
-}
-
 function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   const wrap = document.createElement('div');
-  wrap.className = 'chart-card';
+  wrap.className = 'chart-card card-3d';
 
   if (emptyNote) {
     wrap.innerHTML = `
@@ -1554,7 +1734,7 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
 // (grid/baseline/axis labels/tooltip) but draws a filled line instead of bars.
 function lineChartCard(title, seriesObj, color, subtitle) {
   const wrap = document.createElement('div');
-  wrap.className = 'chart-card';
+  wrap.className = 'chart-card card-3d';
 
   const dates = Object.keys(seriesObj || {}).sort();
   const values = dates.map(d => seriesObj[d]);
@@ -1674,9 +1854,11 @@ function renderContentTypes(agg) {
   const segments = agg.typeRows.map((row, i) => {
     const share = row.totalViews / totalViewsAll;
     const dash = Math.max(0, share * circumference);
-    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${DONUT_PALETTE[i % DONUT_PALETTE.length]}"
-      stroke-width="16" stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}"
-      stroke-dashoffset="${(-offset).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
+    const pct = (share * 100).toFixed(1);
+    const seg = `<circle class="donut-seg" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${DONUT_PALETTE[i % DONUT_PALETTE.length]}"
+      stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}"
+      stroke-dashoffset="${(-offset).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"
+      data-label="${escapeHtml(row.type)}" data-val="${fmtNum(row.totalViews)} views · ${pct}%"></circle>`;
     offset += dash;
     return seg;
   }).join('');
@@ -1696,6 +1878,17 @@ function renderContentTypes(agg) {
       <svg viewBox="0 0 100 100" width="120" height="120">${segments}</svg>
       <div class="donut-legend">${legend}</div>
     </div>`;
+
+  const tooltip = document.getElementById('tooltip');
+  el.querySelectorAll('.donut-seg').forEach(seg => {
+    seg.addEventListener('mousemove', (e) => {
+      tooltip.style.opacity = '1';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+      tooltip.textContent = `${seg.dataset.label}: ${seg.dataset.val}`;
+    });
+    seg.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  });
 }
 
 /* ============================================================
@@ -1710,13 +1903,12 @@ function renderPostsTable(posts) {
   if (!posts.length) { el.innerHTML = `<div class="empty-note">Chưa có bài đăng nào trong khoảng thời gian này.</div>`; return; }
   el.innerHTML = `
     <table>
-      <thead><tr><th>Ngày</th><th>Nội dung</th><th class="num">Views</th><th class="num">Reach</th><th class="num">Engaged</th><th class="num">Clicks</th></tr></thead>
+      <thead><tr><th>Ngày</th><th>Nội dung</th><th class="num">Views</th><th class="num">Engaged</th><th class="num">Clicks</th></tr></thead>
       <tbody>
         ${posts.map(p => `<tr>
           <td>${p.date}</td>
           <td class="msg-cell" title="${escapeHtml(p.message)}">${escapeHtml(p.message)}</td>
           <td class="num">${fmtNum(p.views)}</td>
-          <td class="num">${fmtNum(p.reach)}</td>
           <td class="num">${fmtNum(p.engaged)}</td>
           <td class="num">${fmtNum(p.clicks)}</td>
         </tr>`).join('')}
