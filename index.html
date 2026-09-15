@@ -438,6 +438,25 @@
   <button class="btn secondary" onclick="doLogout()" style="margin-top:12px;">Đăng xuất</button>
 </div>
 
+<!-- ============ FORCE PASSWORD CHANGE (bắt buộc đổi mật khẩu tạm ở lần đăng nhập đầu tiên) ============ -->
+<div id="forcePwScreen" class="auth-card" hidden>
+  <h1>Đổi mật khẩu lần đầu</h1>
+  <p class="sub">Đây là lần đăng nhập đầu tiên bằng mật khẩu tạm được Admin cấp. Vui lòng đặt mật khẩu mới trước khi tiếp tục sử dụng.</p>
+  <form onsubmit="event.preventDefault(); submitForcePasswordChange();">
+    <div class="field">
+      <label for="newPw1">Mật khẩu mới</label>
+      <input id="newPw1" type="password" placeholder="ít nhất 6 ký tự" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="newPw2">Xác nhận mật khẩu mới</label>
+      <input id="newPw2" type="password" placeholder="nhập lại mật khẩu mới" autocomplete="new-password">
+    </div>
+    <button class="btn" type="submit">Đổi mật khẩu &amp; tiếp tục</button>
+  </form>
+  <div id="forcePwError" class="msg-box err"></div>
+  <button class="btn secondary" onclick="doLogout()" style="margin-top:12px;">Đăng xuất</button>
+</div>
+
 <!-- ============ APP (dashboard + admin) ============ -->
 <div class="wrap" id="app" hidden>
   <header class="topbar">
@@ -705,7 +724,7 @@
       <div class="field">
         <label for="newUserPassword">Mật khẩu tạm</label>
         <input id="newUserPassword" type="text" placeholder="ít nhất 6 ký tự">
-        <div class="hint">Sau khi tạo, gửi email + mật khẩu này cho họ qua Zalo/Messenger để họ đăng nhập.</div>
+        <div class="hint">Sau khi tạo, gửi email + mật khẩu này cho họ qua Zalo/Messenger để họ đăng nhập. Ở lần đăng nhập đầu tiên, hệ thống sẽ bắt buộc họ đổi sang mật khẩu mới trước khi vào dashboard.</div>
       </div>
       <button class="btn" onclick="addUser()">Thêm người dùng</button>
       <div id="addUserMsg" class="msg-box"></div>
@@ -773,6 +792,7 @@ let LAST_ADS = null;     // dữ liệu quảng cáo gần nhất, dùng để x
 function showScreen(name) {
   document.getElementById('login').hidden = name !== 'login';
   document.getElementById('pending').hidden = name !== 'pending';
+  document.getElementById('forcePwScreen').hidden = name !== 'forcePw';
   document.getElementById('app').hidden = name !== 'app';
 }
 function showLoading(v) {
@@ -901,10 +921,13 @@ function doLogout() {
 /* ============================================================
    AUTH STATE — the main router
    ============================================================ */
+let PENDING_PW_USER = null; // user Firebase Auth đang chờ đổi mật khẩu tạm ở lần đăng nhập đầu tiên
+
 auth.onAuthStateChanged(async (user) => {
   if (!user) {
     CURRENT_USER = null;
     CURRENT_ROLE = null;
+    PENDING_PW_USER = null;
     showScreen('login');
     return;
   }
@@ -917,35 +940,84 @@ auth.onAuthStateChanged(async (user) => {
       showLoading(false);
       return;
     }
-    CURRENT_USER = user;
     const data = doc.data();
-    CURRENT_ROLE = data.role || 'viewer';
-    document.getElementById('adminNavBtn').hidden = CURRENT_ROLE !== 'admin';
-    document.getElementById('welcomeName').textContent = data.name || user.email;
-
-    const cfgDoc = await db.collection('config').doc('shared').get();
-    if (cfgDoc.exists) {
-      const c = cfgDoc.data();
-      CFG = { token: c.fbAccessToken || '', adAccountId: c.adAccountId || '' };
-    } else {
-      CFG = { token: '', adAccountId: '' };
+    if (data.mustChangePassword) {
+      // Tài khoản vừa được Admin tạo bằng mật khẩu tạm — bắt đổi mật khẩu trước khi vào dashboard.
+      PENDING_PW_USER = user;
+      setMsg('forcePwError', '', '');
+      showScreen('forcePw');
+      showLoading(false);
+      return;
     }
-
-    showScreen('app');
-    showLoading(false);
-
-    if (CFG.token && CFG.adAccountId) {
-      initApp();
-    } else if (CURRENT_ROLE === 'admin') {
-      setStatus('Chưa thiết lập Access Token Facebook dùng chung — bấm "Quản lý người dùng" để thiết lập.', true);
-    } else {
-      setStatus('Hệ thống chưa được Admin thiết lập Access Token Facebook. Liên hệ Admin.', true);
-    }
+    await enterApp(user, data);
   } catch (e) {
     showLoading(false);
     setStatus('Lỗi tải dữ liệu tài khoản: ' + e.message, true);
   }
 });
+
+// Tiếp tục vào dashboard sau khi đã xác nhận user hợp lệ (và không còn phải đổi mật khẩu tạm).
+async function enterApp(user, data) {
+  CURRENT_USER = user;
+  CURRENT_ROLE = data.role || 'viewer';
+  document.getElementById('adminNavBtn').hidden = CURRENT_ROLE !== 'admin';
+  document.getElementById('welcomeName').textContent = data.name || user.email;
+
+  const cfgDoc = await db.collection('config').doc('shared').get();
+  if (cfgDoc.exists) {
+    const c = cfgDoc.data();
+    CFG = { token: c.fbAccessToken || '', adAccountId: c.adAccountId || '' };
+  } else {
+    CFG = { token: '', adAccountId: '' };
+  }
+
+  showScreen('app');
+  showLoading(false);
+
+  if (CFG.token && CFG.adAccountId) {
+    initApp();
+  } else if (CURRENT_ROLE === 'admin') {
+    setStatus('Chưa thiết lập Access Token Facebook dùng chung — bấm "Quản lý người dùng" để thiết lập.', true);
+  } else {
+    setStatus('Hệ thống chưa được Admin thiết lập Access Token Facebook. Liên hệ Admin.', true);
+  }
+}
+
+async function submitForcePasswordChange() {
+  const pw1 = document.getElementById('newPw1').value;
+  const pw2 = document.getElementById('newPw2').value;
+  setMsg('forcePwError', '', '');
+  if (!pw1 || pw1.length < 6) {
+    setMsg('forcePwError', 'Mật khẩu mới cần tối thiểu 6 ký tự.', 'err');
+    return;
+  }
+  if (pw1 !== pw2) {
+    setMsg('forcePwError', 'Mật khẩu xác nhận không khớp.', 'err');
+    return;
+  }
+  if (!PENDING_PW_USER) {
+    setMsg('forcePwError', 'Phiên đăng nhập đã hết hạn, vui lòng đăng xuất và đăng nhập lại.', 'err');
+    return;
+  }
+  showLoading(true);
+  try {
+    await PENDING_PW_USER.updatePassword(pw1);
+    await db.collection('users').doc(PENDING_PW_USER.uid).set({ mustChangePassword: false }, { merge: true });
+    const freshDoc = await db.collection('users').doc(PENDING_PW_USER.uid).get();
+    const user = PENDING_PW_USER;
+    PENDING_PW_USER = null;
+    document.getElementById('newPw1').value = '';
+    document.getElementById('newPw2').value = '';
+    await enterApp(user, freshDoc.data());
+  } catch (e) {
+    showLoading(false);
+    if (e.code === 'auth/requires-recent-login') {
+      setMsg('forcePwError', 'Phiên đăng nhập đã cũ, vui lòng đăng xuất, đăng nhập lại bằng mật khẩu tạm rồi thử lại.', 'err');
+    } else {
+      setMsg('forcePwError', 'Lỗi đổi mật khẩu: ' + translateAuthError(e.code), 'err');
+    }
+  }
+}
 
 /* ============================================================
    PAGE SWITCHING (Dashboard / Advertising / Explain the metrics / Admin)
@@ -1026,8 +1098,8 @@ async function addUser() {
     const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
     const newUid = cred.user.uid;
     await secondaryAuth.signOut();
-    await db.collection('users').doc(newUid).set({ email, name: name || email, role: 'viewer' });
-    setMsg('addUserMsg', `Đã tạo tài khoản cho ${email}. Gửi email + mật khẩu này cho họ để đăng nhập.`, 'ok');
+    await db.collection('users').doc(newUid).set({ email, name: name || email, role: 'viewer', mustChangePassword: true });
+    setMsg('addUserMsg', `Đã tạo tài khoản cho ${email}. Gửi email + mật khẩu này cho họ — ở lần đăng nhập đầu tiên, họ sẽ bị bắt đổi sang mật khẩu mới trước khi vào dashboard.`, 'ok');
     document.getElementById('newUserName').value = '';
     document.getElementById('newUserEmail').value = '';
     document.getElementById('newUserPassword').value = '';
