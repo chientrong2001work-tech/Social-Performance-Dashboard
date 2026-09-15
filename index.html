@@ -22,7 +22,7 @@
     --border:          rgba(30,58,138,0.10);
     --good:            #16a34a;
     --critical:        #dc2626;
-    --shadow-3d:        0 10px 24px -8px rgba(30,64,175,0.22), 0 2px 6px -2px rgba(30,64,175,0.14);
+    --shadow-3d:        0 12px 28px -8px rgba(30,64,175,0.28), 0 3px 8px -2px rgba(30,64,175,0.18);
     --shadow-3d-hover:  0 18px 34px -10px rgba(30,64,175,0.30), 0 6px 12px -4px rgba(30,64,175,0.20);
     /* Validated categorical slots (dataviz skill reference palette) */
     --series-reach:     #2563eb; /* blue */
@@ -278,12 +278,13 @@
   .chart-card .chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
   .bar {
     fill: var(--series-reach); cursor: pointer;
-    transition: transform .15s ease, filter .15s ease, opacity .15s ease;
-    transform-box: fill-box; transform-origin: center bottom;
+    transition: filter .15s ease, opacity .15s ease;
   }
-  .bar:hover { transform: scale(1.12, 1.08); filter: brightness(1.12); opacity: .95; }
-  .gridline { stroke: var(--gridline); stroke-width: 1; }
-  .baseline { stroke: var(--baseline); stroke-width: 1; }
+  /* Chỉ đổi độ sáng/độ mờ khi hover — KHÔNG scale/phóng to cột, vì phóng to 1 cột sẽ đẩy nó
+     lệch khỏi vị trí gốc trong hệ toạ độ SVG dùng chung, trông như "nhảy lên trên". */
+  .bar:hover { filter: brightness(1.18); opacity: .92; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; stroke-dasharray: 3 3; }
+  .baseline { stroke: var(--baseline); stroke-width: 1.2; }
   .axis-label { fill: var(--muted); font-size: 9px; font-family: system-ui, sans-serif; }
   .dot { transition: r .15s ease, filter .15s ease; cursor: pointer; }
   .dot:hover { r: 5; filter: brightness(1.15); }
@@ -295,9 +296,12 @@
   }
   .donut-seg:hover { stroke-width: 20; opacity: .85; transform: scale(1.05); }
   .tooltip {
-    position: absolute; pointer-events: none; background: var(--brand-dark); color: #fff;
+    /* position:fixed (không phải absolute) vì toạ độ đặt tooltip lấy từ e.clientX/clientY —
+       toạ độ này tính theo viewport, dùng với position:absolute sẽ bị lệch/nhảy lên đầu trang
+       khi trang đã cuộn xuống. */
+    position: fixed; pointer-events: none; background: var(--brand-dark); color: #fff;
     font-size: 11px; padding: 5px 8px; border-radius: 6px; opacity: 0; transition: opacity .08s;
-    white-space: nowrap; z-index: 10;
+    white-space: nowrap; z-index: 999; box-shadow: var(--shadow-3d);
   }
 
   /* ---------- Tables ---------- */
@@ -1517,9 +1521,10 @@ function deltaHtml(pct) {
 }
 
 function kpiCardHtml(c) {
+  const color = c.color || '#2563eb';
   return `
     <div class="kpi-card card-3d">
-      ${c.icon ? `<div class="icon">${c.icon}</div>` : ''}
+      ${c.icon ? `<div class="icon" style="background:${color}1f;color:${color};">${c.icon}</div>` : ''}
       <div class="label">${c.label}</div>
       <div class="value">${c.value}</div>
       ${c.delta}
@@ -1553,21 +1558,21 @@ function renderKPIs(cur, prev, ads, agg) {
 
   // "Hiệu suất tổng thể" — 8 chỉ số chính, giống bố cục dashboard mẫu.
   const mainCards = [
-    { icon: '👁', label: 'Total Views', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
-    { icon: '📶', label: 'Reach', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
-    { icon: '💬', label: 'Engagement', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
-    { icon: '🖱', label: 'Clicks', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : apiNote },
-    { icon: '👥', label: 'Follower Growth', value: (followerGrowthCur != null) ? fmtSigned(followerGrowthCur) : '—', delta: (followerGrowthCur != null) ? deltaHtml(pctDelta(followerGrowthCur, followerGrowthPrev)) : followerNote },
-    { icon: '🎬', label: 'Watch Time', value: (watchTimeCur != null) ? fmtDuration(watchTimeCur) : '—', delta: (watchTimeCur != null) ? deltaHtml(pctDelta(watchTimeCur, watchTimePrev)) : watchTimeNote },
-    { icon: '📝', label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${DISPLAY_RANGE_DAYS} ngày</span>` },
+    { icon: '👁', color: '#2563eb', label: 'Total Views', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
+    { icon: '📶', color: '#f97316', label: 'Reach', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
+    { icon: '💬', color: '#a855f7', label: 'Engagement', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
+    { icon: '🖱', color: '#14b8a6', label: 'Clicks', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : apiNote },
+    { icon: '👥', color: '#ec4899', label: 'Follower Growth', value: (followerGrowthCur != null) ? fmtSigned(followerGrowthCur) : '—', delta: (followerGrowthCur != null) ? deltaHtml(pctDelta(followerGrowthCur, followerGrowthPrev)) : followerNote },
+    { icon: '🎬', color: '#f59e0b', label: 'Watch Time', value: (watchTimeCur != null) ? fmtDuration(watchTimeCur) : '—', delta: (watchTimeCur != null) ? deltaHtml(pctDelta(watchTimeCur, watchTimePrev)) : watchTimeNote },
+    { icon: '📝', color: '#6366f1', label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${DISPLAY_RANGE_DAYS} ngày</span>` },
   ];
   document.getElementById('kpiRow').innerHTML = mainCards.map(kpiCardHtml).join('');
 
   // "Quảng cáo (Ads)" — tách riêng khỏi hiệu suất organic/bài đăng để không lẫn 2 nguồn dữ liệu.
   const adsCards = [
-    { icon: '💰', label: `Chi phí Ads (${DISPLAY_RANGE_DAYS} ngày)`, value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
-    { icon: '✉️', label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
-    { icon: '⚖️', label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình ${DISPLAY_RANGE_DAYS} ngày</span>` },
+    { icon: '💰', color: '#f43f5e', label: `Chi phí Ads (${DISPLAY_RANGE_DAYS} ngày)`, value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
+    { icon: '✉️', color: '#0ea5e9', label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
+    { icon: '⚖️', color: '#10b981', label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình ${DISPLAY_RANGE_DAYS} ngày</span>` },
   ];
   document.getElementById('kpiRowAds').innerHTML = adsCards.map(kpiCardHtml).join('');
 }
@@ -1580,14 +1585,14 @@ function renderKPIs2(agg) {
   }
   const top = agg.topPost;
   const cards = [
-    { icon: '🏆', label: 'Bài Top (nhiều views nhất)', value: top ? fmtNum(top.views) : '—', sub: top ? (top.date + ' · ' + top.message.slice(0, 40)) : '' },
-    { icon: '🕒', label: 'Giờ đăng tốt nhất', value: agg.bestHourLabel, sub: 'Trung bình views cao nhất' },
-    { icon: '📅', label: 'Ngày đăng tốt nhất', value: agg.bestDayLabel, sub: 'Trung bình views cao nhất' },
-    { icon: '▶️', label: 'Total Watch (Video/Reel)', value: fmtNum(agg.videoLikeCount), sub: 'Số bài video & reel' },
+    { icon: '🏆', color: '#f59e0b', label: 'Bài Top (nhiều views nhất)', value: top ? fmtNum(top.views) : '—', sub: top ? (top.date + ' · ' + top.message.slice(0, 40)) : '' },
+    { icon: '🕒', color: '#0ea5e9', label: 'Giờ đăng tốt nhất', value: agg.bestHourLabel, sub: 'Trung bình views cao nhất' },
+    { icon: '📅', color: '#a855f7', label: 'Ngày đăng tốt nhất', value: agg.bestDayLabel, sub: 'Trung bình views cao nhất' },
+    { icon: '▶️', color: '#ec4899', label: 'Total Watch (Video/Reel)', value: fmtNum(agg.videoLikeCount), sub: 'Số bài video & reel' },
   ];
   el.innerHTML = cards.map(c => `
     <div class="kpi-card mini card-3d">
-      <div class="icon">${c.icon}</div>
+      <div class="icon" style="background:${c.color}1f;color:${c.color};">${c.icon}</div>
       <div class="label">${c.label}</div>
       <div class="value">${c.value}${c.sub ? `<span class="sub">${escapeHtml(c.sub)}</span>` : ''}</div>
     </div>`).join('');
@@ -1662,6 +1667,34 @@ function buildCumulativeSeries(dailyViews) {
   return out;
 }
 
+// Làm tròn giá trị max lên một mốc "đẹp" (1/2/5/10 × 10^n) để trục Y có các mốc dễ đọc
+// (0, ..., max) thay vì một số lẻ — giống "đường đối chiếu" có ghi số trong biểu đồ mẫu.
+function niceMax(max) {
+  if (!max || max <= 0) return 1;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
+  const residual = max / magnitude;
+  let niceResidual;
+  if (residual > 5) niceResidual = 10;
+  else if (residual > 2) niceResidual = 5;
+  else if (residual > 1) niceResidual = 2;
+  else niceResidual = 1;
+  return niceResidual * magnitude;
+}
+
+// Vẽ 5 đường lưới ngang (0%, 25%, 50%, 75%, 100% của axisMax) kèm nhãn số bên trái — dùng chung
+// cho cả biểu đồ cột và biểu đồ đường để luôn có "đường đối chiếu" giá trị như biểu đồ mẫu.
+function axisGridWithLabels(axisMax, padL, padT, plotW, plotH, W, padR) {
+  let grid = '';
+  for (let g = 0; g <= 4; g++) {
+    const val = axisMax * g / 4;
+    const y = padT + plotH * (1 - g / 4);
+    const cls = g === 0 ? 'baseline' : 'gridline';
+    grid += `<line class="${cls}" x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"></line>`;
+    grid += `<text class="axis-label" x="${(padL - 6).toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmtNum(val)}</text>`;
+  }
+  return grid;
+}
+
 function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   const wrap = document.createElement('div');
   wrap.className = 'chart-card card-3d';
@@ -1675,8 +1708,9 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   }
   const dates = Object.keys(seriesObj).sort();
   const values = dates.map(d => seriesObj[d]);
-  const max = Math.max(1, ...values);
-  const W = 340, H = 140, padL = 30, padB = 18, padT = 6, padR = 6;
+  const rawMax = Math.max(1, ...values);
+  const axisMax = niceMax(rawMax);
+  const W = 340, H = 140, padL = 38, padB = 18, padT = 8, padR = 6;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const barGap = 2;
   const barW = dates.length ? Math.max(1, plotW / dates.length - barGap) : 0;
@@ -1684,19 +1718,14 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   let bars = '';
   dates.forEach((d, i) => {
     const v = values[i];
-    const h = max ? (v / max) * plotH : 0;
+    const h = axisMax ? (v / axisMax) * plotH : 0;
     const x = padL + i * (barW + barGap);
     const y = padT + (plotH - h);
     bars += `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" rx="2" ry="2" fill="${color}" data-date="${d}" data-val="${v}"></rect>`;
   });
 
-  // gridlines (3 horizontal)
-  let grid = '';
-  for (let g = 1; g <= 3; g++) {
-    const y = padT + plotH * (g / 4);
-    grid += `<line class="gridline" x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"></line>`;
-  }
-  const baseline = `<line class="baseline" x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}"></line>`;
+  // Đường lưới ngang (đường đối chiếu) kèm nhãn giá trị 0 → axisMax, giống biểu đồ mẫu.
+  const grid = axisGridWithLabels(axisMax, padL, padT, plotW, plotH, W, padR);
 
   // sparse x labels: first, middle, last
   let labels = '';
@@ -1712,7 +1741,7 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   wrap.innerHTML = `
     <div class="chart-title">${title}</div>
     <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : DISPLAY_RANGE_DAYS + ' ngày gần nhất'}</div>
-    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${grid}${bars}${baseline}${labels}</svg>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${grid}${bars}${labels}</svg>
   `;
 
   const svg = wrap.querySelector('svg');
@@ -1738,14 +1767,15 @@ function lineChartCard(title, seriesObj, color, subtitle) {
 
   const dates = Object.keys(seriesObj || {}).sort();
   const values = dates.map(d => seriesObj[d]);
-  const max = Math.max(1, ...values);
-  const W = 340, H = 140, padL = 34, padB = 18, padT = 6, padR = 6;
+  const rawMax = Math.max(1, ...values);
+  const axisMax = niceMax(rawMax);
+  const W = 340, H = 140, padL = 38, padB = 18, padT = 8, padR = 6;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const stepX = dates.length > 1 ? plotW / (dates.length - 1) : 0;
 
   const points = dates.map((d, i) => {
     const x = padL + i * stepX;
-    const y = padT + (plotH - (max ? (values[i] / max) * plotH : 0));
+    const y = padT + (plotH - (axisMax ? (values[i] / axisMax) * plotH : 0));
     return { x, y, d, v: values[i] };
   });
   const linePath = points.length ? `M ${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')}` : '';
@@ -1753,12 +1783,8 @@ function lineChartCard(title, seriesObj, color, subtitle) {
     ? `M ${padL.toFixed(1)},${(padT + plotH).toFixed(1)} L ${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')} L ${points[points.length - 1].x.toFixed(1)},${(padT + plotH).toFixed(1)} Z`
     : '';
 
-  let grid = '';
-  for (let g = 1; g <= 3; g++) {
-    const y = padT + plotH * (g / 4);
-    grid += `<line class="gridline" x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"></line>`;
-  }
-  const baseline = `<line class="baseline" x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}"></line>`;
+  // Đường lưới ngang (đường đối chiếu) kèm nhãn giá trị 0 → axisMax, giống biểu đồ mẫu.
+  const grid = axisGridWithLabels(axisMax, padL, padT, plotW, plotH, W, padR);
 
   let labels = '';
   if (dates.length) {
@@ -1780,7 +1806,7 @@ function lineChartCard(title, seriesObj, color, subtitle) {
       ${grid}
       <path d="${areaPath}" fill="${color}" opacity="0.12" stroke="none"></path>
       <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2"></path>
-      ${dots}${baseline}${labels}
+      ${dots}${labels}
     </svg>
   `;
 
@@ -1828,19 +1854,23 @@ function renderFunnel(agg, organicCur) {
   const note = missing.length
     ? `<div class="empty-note" style="margin-top:6px;">${missing.join(', ')}: chưa có qua Facebook API.</div>`
     : '';
-  el.innerHTML = steps.map(s => {
+  // Mỗi bước funnel một màu riêng (thay vì đồng loạt 1 màu xanh) để dễ phân biệt các bước.
+  const FUNNEL_COLORS = ['#2563eb', '#f97316', '#a855f7', '#14b8a6'];
+  el.innerHTML = steps.map((s, i) => {
     const pct = max ? (s.value / max * 100) : 0;
     const widthPct = Math.max(4, Math.min(100, pct));
     return `
       <div class="funnel-step">
         <div class="flabel">${s.label}</div>
-        <div class="fbar" style="width:${widthPct.toFixed(1)}%;">${fmtNum(s.value)}</div>
+        <div class="fbar" style="width:${widthPct.toFixed(1)}%;background:${FUNNEL_COLORS[i % FUNNEL_COLORS.length]};">${fmtNum(s.value)}</div>
         <div class="fpct">${pct.toFixed(1)}%</div>
       </div>`;
   }).join('') + note;
 }
 
-const DONUT_PALETTE = ['var(--series-reach)', 'var(--series-engage)', 'var(--series-msg)', 'var(--series-spend)', '#b08a3e', '#7a7a7a'];
+// Bảng màu riêng cho donut "Loại nội dung" — cố tình chọn các tông khác xa nhau (xanh/cam/tím/
+// ngọc/hồng/vàng) thay vì các sắc xanh gần giống nhau, để phân biệt rõ từng loại trong lát cắt nhỏ.
+const DONUT_PALETTE = ['#2563eb', '#f97316', '#a855f7', '#14b8a6', '#ec4899', '#f59e0b'];
 
 function renderContentTypes(agg) {
   const el = document.getElementById('ctypeBox');
