@@ -269,6 +269,11 @@
 
   /* ---------- Trend charts (small multiples) ---------- */
   .section-title { font-size: 14px; font-weight: 700; margin: 26px 0 10px; color: var(--text-primary); }
+  .section-title-row {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    margin: 26px 0 10px;
+  }
+  .section-title-row .section-title { margin: 0; }
   .chart-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
   .chart-card {
     padding: 14px 14px 8px;
@@ -407,7 +412,6 @@
         <button data-days="30" class="active" onclick="setRangeDays(30)">30 ngày</button>
         <button data-days="90" onclick="setRangeDays(90)">90 ngày</button>
       </div>
-      <span class="range-label" id="rangeLabel"></span>
       <button class="icon-btn" onclick="refreshAll()">&#x21bb; Làm mới</button>
       <button class="icon-btn" onclick="window.print()">&#x1F5B6; In báo cáo</button>
       <button class="icon-btn" id="adminNavBtn" hidden onclick="toggleAdminView()">Quản lý người dùng</button>
@@ -429,11 +433,6 @@
     <label for="customUntil">Đến</label>
     <input type="date" id="customUntil" onchange="setCustomRange()">
     <button class="icon-btn" onclick="resetRange()">Reset</button>
-    <div class="granularity-picker" id="granularityPicker">
-      <button data-g="day" class="active" onclick="setGranularity('day')">Ngày</button>
-      <button data-g="week" onclick="setGranularity('week')">Tuần</button>
-      <button data-g="month" onclick="setGranularity('month')">Tháng</button>
-    </div>
     <div class="live-badge"><span class="dot"></span><span>Dữ liệu thực từ Facebook API</span></div>
   </div>
 
@@ -443,7 +442,14 @@
     <div class="section-title">Bài viết nổi bật</div>
     <div class="kpi-row" id="kpiRow2"></div>
 
-    <div class="section-title" id="trendTitle">Xu hướng 30 ngày gần nhất</div>
+    <div class="section-title-row">
+      <div class="section-title" id="trendTitle">Xu hướng 30 ngày gần nhất</div>
+      <div class="granularity-picker" id="granularityPicker">
+        <button data-g="day" class="active" onclick="setGranularity('day')">Ngày</button>
+        <button data-g="week" onclick="setGranularity('week')">Tuần</button>
+        <button data-g="month" onclick="setGranularity('month')">Tháng</button>
+      </div>
+    </div>
     <div class="chart-row" id="chartRow"></div>
     <div class="chart-row" id="chartRow2" style="margin-top:10px;"></div>
 
@@ -1037,8 +1043,6 @@ async function refreshAll() {
     rangeDaysForLabel = RANGE_DAYS;
   }
   DISPLAY_RANGE_DAYS = rangeDaysForLabel;
-  document.getElementById('rangeLabel').textContent =
-    `${fmtDate(since)} → ${fmtDate(until)} (so với ${fmtDate(prevSince)} → ${fmtDate(prevUntil)})`;
   const trendTitleEl = document.getElementById('trendTitle');
   if (trendTitleEl) trendTitleEl.textContent = `Xu hướng ${rangeDaysForLabel} ngày gần nhất`;
 
