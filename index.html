@@ -1056,10 +1056,15 @@ async function loadPostsForRange(page, since, until) {
   // Từ đây, mỗi phần bổ sung (loại media, views/reach, clicks) được lấy RIÊNG và bọc try/catch độc
   // lập — nếu Facebook đổi/bỏ 1 metric nào đó trong tương lai, chỉ phần đó bị ảnh hưởng, không kéo
   // sập toàn bộ bảng bài đăng như trước.
-  const [attachData, viewsData, clicksData] = await Promise.all([
+  const [attachData, viewsData, clicksData, engagedData] = await Promise.all([
     fbGet(`${page.id}/posts`, { fields: 'id,attachments{media_type}', ...commonParams }, page.access_token).catch(() => null),
     fbGet(`${page.id}/posts`, { fields: 'id,insights.metric(post_media_view,post_total_media_view_unique)', ...commonParams }, page.access_token).catch(() => null),
     fbGet(`${page.id}/posts`, { fields: 'id,insights.metric(post_clicks)', ...commonParams }, page.access_token).catch(() => null),
+    // Engagement thật (reactions + comments + shares) — đây KHÔNG phải insights.metric (loại đã bị
+    // Facebook chặn qua API công khai) mà là field/edge thường trên chính post, nên vẫn hoạt động.
+    // Cần quyền "pages_read_user_content" trên token đang dùng; nếu thiếu quyền hoặc lỗi, cứ để null
+    // như các phần khác — không kéo sập cả bảng.
+    fbGet(`${page.id}/posts`, { fields: 'id,reactions.summary(true).limit(0),comments.summary(true).limit(0),shares', ...commonParams }, page.access_token).catch(() => null),
   ]);
 
   const mediaById = {};
@@ -1081,6 +1086,14 @@ async function loadPostsForRange(page, since, until) {
     if (row) clicksById[p.id] = Number(row.values?.[0]?.value) || 0;
   });
 
+  const engagedById = {};
+  (engagedData?.data || []).forEach(p => {
+    const reactions = Number(p.reactions?.summary?.total_count) || 0;
+    const comments = Number(p.comments?.summary?.total_count) || 0;
+    const shares = Number(p.shares?.count) || 0;
+    engagedById[p.id] = reactions + comments + shares;
+  });
+
   return posts.map(post => ({
     id: post.id,
     message: (post.message || '(Không có nội dung văn bản)').slice(0, 140),
@@ -1089,7 +1102,7 @@ async function loadPostsForRange(page, since, until) {
     mediaType: mediaById[post.id] || 'status',
     views: viewsById[post.id]?.views ?? 0,
     reach: viewsById[post.id]?.reach ?? 0,
-    engaged: null,
+    engaged: Object.prototype.hasOwnProperty.call(engagedById, post.id) ? engagedById[post.id] : null,
     clicks: Object.prototype.hasOwnProperty.call(clicksById, post.id) ? clicksById[post.id] : null,
   }));
 }
