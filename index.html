@@ -122,6 +122,31 @@
   #statusLine { font-size: 12px; color: var(--muted); margin-bottom: 10px; min-height: 16px; }
   #statusLine.err { color: var(--critical); }
 
+  /* ---------- Range picker (7/30/90 ngày) ---------- */
+  .range-picker { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .range-picker button {
+    background: var(--surface-1); color: var(--text-secondary); border: none; border-right: 1px solid var(--border);
+    padding: 8px 12px; font-size: 13px; cursor: pointer;
+  }
+  .range-picker button:last-child { border-right: none; }
+  .range-picker button.active { background: var(--brand-dark); color: #fff; }
+
+  /* ---------- Xuất CSV ---------- */
+  .table-card .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .table-card .card-head .chart-title { margin-bottom: 0; }
+  .csv-btn {
+    background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 7px;
+    padding: 5px 10px; font-size: 11.5px; cursor: pointer; flex: none;
+  }
+  .csv-btn:hover { background: var(--page-plane); }
+
+  /* ---------- In báo cáo ---------- */
+  @media print {
+    header.topbar .controls, #statusLine, #adminNavBtn, .csv-btn { display: none !important; }
+    body { background: #fff; }
+    .kpi-card, .chart-card, .table-card { break-inside: avoid; }
+  }
+
   /* ---------- KPI row ---------- */
   .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
   @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
@@ -250,8 +275,14 @@
     </div>
     <div class="controls">
       <select id="pageSelect"></select>
+      <div class="range-picker" id="rangePicker">
+        <button data-days="7" onclick="setRangeDays(7)">7 ngày</button>
+        <button data-days="30" class="active" onclick="setRangeDays(30)">30 ngày</button>
+        <button data-days="90" onclick="setRangeDays(90)">90 ngày</button>
+      </div>
       <span class="range-label" id="rangeLabel"></span>
       <button class="icon-btn" onclick="refreshAll()">&#x21bb; Làm mới</button>
+      <button class="icon-btn" onclick="window.print()">&#x1F5B6; In báo cáo</button>
       <button class="icon-btn" id="adminNavBtn" hidden onclick="toggleAdminView()">Quản lý người dùng</button>
       <button class="icon-btn" onclick="doLogout()">Đăng xuất</button>
     </div>
@@ -262,7 +293,7 @@
     <div class="kpi-row" id="kpiRow"></div>
     <div class="kpi-row" id="kpiRow2"></div>
 
-    <div class="section-title">Xu hướng 30 ngày gần nhất</div>
+    <div class="section-title" id="trendTitle">Xu hướng 30 ngày gần nhất</div>
     <div class="chart-row" id="chartRow"></div>
     <div class="chart-row" id="chartRow2" style="margin-top:10px;"></div>
 
@@ -283,11 +314,17 @@
     <div class="section-title">Chi tiết</div>
     <div class="table-row">
       <div class="table-card">
-        <div class="chart-title">Bài đăng — Views cao nhất (organic)</div>
+        <div class="card-head">
+          <div class="chart-title">Bài đăng — Views cao nhất (organic)</div>
+          <button class="csv-btn" onclick="exportPostsCSV()">&#x2B07; Xuất CSV</button>
+        </div>
         <div id="postsTable"></div>
       </div>
       <div class="table-card">
-        <div class="chart-title">Chiến dịch quảng cáo (theo Cost / Message)</div>
+        <div class="card-head">
+          <div class="chart-title">Chiến dịch quảng cáo (theo Cost / Message)</div>
+          <button class="csv-btn" onclick="exportCampaignsCSV()">&#x2B07; Xuất CSV</button>
+        </div>
         <div id="campaignsTable"></div>
       </div>
     </div>
@@ -372,6 +409,9 @@ const API_VERSION = 'v21.0';
 let CFG = { token: '', adAccountId: '' };
 let PAGES = [];          // [{id,name,access_token,category}]
 let CURRENT_PAGE = null; // selected page object
+let RANGE_DAYS = 30;     // khoảng thời gian đang chọn (7/30/90 ngày)
+let LAST_TOP_POSTS = []; // dữ liệu bảng bài đăng gần nhất, dùng để xuất CSV
+let LAST_ADS = null;     // dữ liệu quảng cáo gần nhất, dùng để xuất CSV
 
 /* ============================================================
    SCREEN SWITCHING
@@ -688,11 +728,13 @@ async function refreshAll() {
   setStatus('Đang tải số liệu cho "' + CURRENT_PAGE.name + '"…');
 
   const until = new Date();
-  const since = daysAgo(30);
-  const prevUntil = daysAgo(31);
-  const prevSince = daysAgo(60);
+  const since = daysAgo(RANGE_DAYS);
+  const prevUntil = daysAgo(RANGE_DAYS + 1);
+  const prevSince = daysAgo(RANGE_DAYS * 2);
   document.getElementById('rangeLabel').textContent =
     `${fmtDate(since)} → ${fmtDate(until)} (so với ${fmtDate(prevSince)} → ${fmtDate(prevUntil)})`;
+  const trendTitleEl = document.getElementById('trendTitle');
+  if (trendTitleEl) trendTitleEl.textContent = `Xu hướng ${RANGE_DAYS} ngày gần nhất`;
 
   try {
     const [organicCur, organicPrev, posts, ads] = await Promise.all([
@@ -705,6 +747,8 @@ async function refreshAll() {
     const postsOk = !(posts && posts.error);
     const agg = postsOk ? aggregatePosts(posts) : null;
     const topPosts = postsOk ? [...posts].sort((a, b) => b.views - a.views).slice(0, 10) : posts;
+    LAST_TOP_POSTS = postsOk ? topPosts : [];
+    LAST_ADS = ads;
 
     renderKPIs(organicCur, organicPrev, ads, agg);
     renderKPIs2(agg);
@@ -732,6 +776,64 @@ async function refreshAll() {
   } finally {
     showLoading(false);
   }
+}
+
+/* ============================================================
+   BỘ CHỌN KHOẢNG THỜI GIAN (7 / 30 / 90 ngày)
+   ============================================================ */
+function setRangeDays(days) {
+  RANGE_DAYS = days;
+  document.querySelectorAll('#rangePicker button').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.days) === days);
+  });
+  refreshAll();
+}
+
+/* ============================================================
+   XUẤT CSV
+   ============================================================ */
+function downloadCSV(filename, rows) {
+  // Thêm BOM để Excel mở tiếng Việt không bị lỗi font.
+  const csv = '﻿' + rows.map(row =>
+    row.map(cell => {
+      const s = (cell === null || cell === undefined) ? '' : String(cell);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportPostsCSV() {
+  if (!LAST_TOP_POSTS || !LAST_TOP_POSTS.length) {
+    setStatus('Chưa có dữ liệu bài đăng để xuất CSV.', true);
+    return;
+  }
+  const header = ['Ngày đăng', 'Nội dung', 'Loại', 'Views', 'Reach', 'Clicks'];
+  const rows = LAST_TOP_POSTS.map(p => [
+    p.date, p.message, MEDIA_TYPE_LABELS[p.mediaType] || p.mediaType, p.views, p.reach, p.clicks ?? '',
+  ]);
+  downloadCSV(`bai-dang_${CURRENT_PAGE?.name || 'page'}_${fmtDate(new Date())}.csv`, [header, ...rows]);
+}
+
+function exportCampaignsCSV() {
+  const campaigns = LAST_ADS?.campaigns;
+  if (!campaigns || !campaigns.length) {
+    setStatus('Chưa có dữ liệu chiến dịch quảng cáo để xuất CSV.', true);
+    return;
+  }
+  const header = ['Chiến dịch', 'Chi phí', 'Messages Started', 'Cost / Message'];
+  const rows = campaigns.map(c => [
+    c.name, c.spend, c.messages, c.costPerMessage ?? '',
+  ]);
+  downloadCSV(`chien-dich-ads_${fmtDate(new Date())}.csv`, [header, ...rows]);
 }
 
 /* ============================================================
@@ -1001,10 +1103,10 @@ function renderKPIs(cur, prev, ads, agg) {
     { label: 'Tổng Views (bài đăng)', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
     { label: 'Tổng Clicks (bài đăng)', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>` },
     { label: 'Eng. Rate (bài đăng)', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: (agg && agg.engRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>` },
-    { label: 'Bài track', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong 30 ngày</span>` },
-    { label: 'Chi phí Ads (30 ngày)', value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
+    { label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${RANGE_DAYS} ngày</span>` },
+    { label: `Chi phí Ads (${RANGE_DAYS} ngày)`, value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
     { label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
-    { label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình 30 ngày</span>` },
+    { label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình ${RANGE_DAYS} ngày</span>` },
   ];
   document.getElementById('kpiRow').innerHTML = cards.map(c => `
     <div class="kpi-card">
@@ -1060,7 +1162,7 @@ function renderCharts(organicCur, ads, agg) {
   }
   row2.appendChild(barChartCard('Daily View Data (bài đăng)', agg.dailyViews, 'var(--series-reach)', false, null));
   const cumulative = buildCumulativeSeries(agg.dailyViews);
-  row2.appendChild(lineChartCard('Cumulative Views (bài đăng)', cumulative, 'var(--series-engage)', 'Tổng views luỹ kế 30 ngày'));
+  row2.appendChild(lineChartCard('Cumulative Views (bài đăng)', cumulative, 'var(--series-engage)', `Tổng views luỹ kế ${RANGE_DAYS} ngày`));
 }
 
 function buildCumulativeSeries(dailyViews) {
@@ -1134,7 +1236,7 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
 
   wrap.innerHTML = `
     <div class="chart-title">${title}</div>
-    <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : '30 ngày gần nhất'}</div>
+    <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : RANGE_DAYS + ' ngày gần nhất'}</div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${grid}${bars}${baseline}${labels}</svg>
   `;
 
@@ -1198,7 +1300,7 @@ function lineChartCard(title, seriesObj, color, subtitle) {
 
   wrap.innerHTML = `
     <div class="chart-title">${title}</div>
-    <div class="chart-sub">${subtitle || '30 ngày gần nhất'}</div>
+    <div class="chart-sub">${subtitle || RANGE_DAYS + ' ngày gần nhất'}</div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
       ${grid}
       <path d="${areaPath}" fill="${color}" opacity="0.12" stroke="none"></path>
