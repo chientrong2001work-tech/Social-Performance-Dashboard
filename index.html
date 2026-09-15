@@ -432,8 +432,8 @@
 <!-- ============ PENDING (đã đăng nhập nhưng chưa được cấp quyền) ============ -->
 <div id="pending" class="auth-card" hidden style="text-align:center;">
   <h1>Chưa được cấp quyền truy cập</h1>
-  <p class="sub">Tài khoản của bạn đã đăng nhập thành công, nhưng chưa được Admin cấp quyền xem dashboard này.</p>
-  <p style="font-size:13px;">Gửi email dưới đây cho Admin để được cấp quyền:</p>
+  <p class="sub">Tài khoản của bạn đã đăng nhập thành công, nhưng hiện chưa có quyền xem dashboard này (có thể do chưa từng được cấp, hoặc quyền đã bị thu hồi trước đó).</p>
+  <p style="font-size:13px;">Gửi email dưới đây cho Admin để được cấp (hoặc cấp lại) quyền:</p>
   <p style="font-size:15px;font-weight:700;"><span id="pendingEmail"></span></p>
   <button class="btn secondary" onclick="doLogout()" style="margin-top:12px;">Đăng xuất</button>
 </div>
@@ -933,14 +933,23 @@ auth.onAuthStateChanged(async (user) => {
   }
   showLoading(true);
   try {
-    const doc = await db.collection('users').doc(user.uid).get();
+    const userRef = db.collection('users').doc(user.uid);
+    let doc = await userRef.get();
     if (!doc.exists) {
+      // Tài khoản Firebase đã tồn tại (đăng nhập thành công) nhưng chưa từng được Admin cấp quyền
+      // — ví dụ tài khoản đã bị "Thu hồi" kiểu cũ (xoá hẳn doc) trước khi có tính năng khôi phục.
+      // Tự tạo một hồ sơ "chờ duyệt" để Admin thấy và cấp lại quyền trong mục Quản lý người dùng,
+      // thay vì phải tạo lại tài khoản Firebase mới (sẽ báo lỗi trùng email).
+      await userRef.set({ email: user.email, name: user.email, role: 'viewer', pendingApproval: true });
+      doc = await userRef.get();
+    }
+    const data = doc.data();
+    if (data.pendingApproval || data.revoked) {
       document.getElementById('pendingEmail').textContent = user.email;
       showScreen('pending');
       showLoading(false);
       return;
     }
-    const data = doc.data();
     if (data.mustChangePassword) {
       // Tài khoản vừa được Admin tạo bằng mật khẩu tạm — bắt đổi mật khẩu trước khi vào dashboard.
       PENDING_PW_USER = user;
@@ -1117,25 +1126,50 @@ async function loadUsersList() {
     const rows = [];
     snap.forEach(doc => rows.push({ uid: doc.id, ...doc.data() }));
     if (!rows.length) { el.innerHTML = '<div class="empty-note">Chưa có người dùng nào.</div>'; return; }
-    rows.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+    // Người chờ duyệt (mới đăng nhập lần đầu, tự nhận diện qua email đã có tài khoản Firebase
+    // nhưng chưa được cấp quyền) hiển thị lên đầu danh sách để Admin dễ thấy và duyệt trước.
+    rows.sort((a, b) => {
+      const pa = a.pendingApproval ? 0 : 1, pb = b.pendingApproval ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return (a.email || '').localeCompare(b.email || '');
+    });
     el.innerHTML = `
       <table>
-        <thead><tr><th>Họ tên</th><th>Email</th><th>Vai trò</th><th></th></tr></thead>
+        <thead><tr><th>Họ tên</th><th>Email</th><th>Trạng thái / Vai trò</th><th></th></tr></thead>
         <tbody>
-          ${rows.map(u => `<tr>
-            <td>${escapeHtml(u.name || '')}</td>
-            <td>${escapeHtml(u.email || '')}</td>
-            <td>
-              <select onchange="updateUserRole('${u.uid}', this.value)" ${u.uid === CURRENT_USER.uid ? 'disabled' : ''}>
+          ${rows.map(u => {
+            const isMe = u.uid === CURRENT_USER.uid;
+            let statusCell;
+            if (u.pendingApproval) {
+              statusCell = `<span class="soon-badge" style="color:var(--brand-accent);border-color:var(--brand-accent);">Chờ duyệt</span>`;
+            } else if (u.revoked) {
+              statusCell = `<span class="soon-badge" style="color:var(--critical);border-color:var(--critical);">Đã thu hồi</span>`;
+            } else {
+              statusCell = `<select onchange="updateUserRole('${u.uid}', this.value)" ${isMe ? 'disabled' : ''}>
                 <option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>Xem</option>
                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-              </select>
-            </td>
-            <td>${u.uid === CURRENT_USER.uid ? '<span style="color:var(--muted);font-size:12px;">(bạn)</span>' : `<button class="btn secondary" onclick="removeUser('${u.uid}','${escapeHtml(u.email || '')}')">Thu hồi</button>`}</td>
-          </tr>`).join('')}
+              </select>`;
+            }
+            let actionCell;
+            if (isMe) {
+              actionCell = '<span style="color:var(--muted);font-size:12px;">(bạn)</span>';
+            } else if (u.pendingApproval) {
+              actionCell = `<button class="btn" style="padding:6px 12px;font-size:12px;" onclick="approveUser('${u.uid}')">Duyệt (Xem)</button>`;
+            } else if (u.revoked) {
+              actionCell = `<button class="btn" style="padding:6px 12px;font-size:12px;" onclick="restoreUser('${u.uid}','${escapeHtml(u.email || '')}')">Khôi phục</button>`;
+            } else {
+              actionCell = `<button class="btn secondary" onclick="removeUser('${u.uid}','${escapeHtml(u.email || '')}')">Thu hồi</button>`;
+            }
+            return `<tr>
+              <td>${escapeHtml(u.name || '')}</td>
+              <td>${escapeHtml(u.email || '')}</td>
+              <td>${statusCell}</td>
+              <td>${actionCell}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
-      <div class="empty-note" style="margin-top:8px;">"Thu hồi" chỉ chặn truy cập dashboard, không xoá tài khoản đăng nhập Firebase.</div>
+      <div class="empty-note" style="margin-top:8px;">"Thu hồi" chỉ chặn truy cập dashboard (có thể "Khôi phục" lại bất cứ lúc nào), không xoá tài khoản đăng nhập Firebase. "Chờ duyệt" là người đã từng đăng nhập bằng một tài khoản Firebase có sẵn nhưng chưa được cấp quyền — bấm "Duyệt" để cấp quyền Xem cho họ (sau đó có thể đổi thành Admin nếu cần).</div>
     `;
   } catch (e) {
     el.innerHTML = '<div class="empty-note">Lỗi tải danh sách: ' + escapeHtml(e.message) + '</div>';
@@ -1144,7 +1178,7 @@ async function loadUsersList() {
 
 async function updateUserRole(uid, role) {
   try {
-    await db.collection('users').doc(uid).set({ role }, { merge: true });
+    await db.collection('users').doc(uid).set({ role, pendingApproval: false, revoked: false }, { merge: true });
     loadUsersList();
   } catch (e) {
     alert('Lỗi cập nhật vai trò: ' + e.message);
@@ -1152,13 +1186,35 @@ async function updateUserRole(uid, role) {
   }
 }
 
-async function removeUser(uid, email) {
-  if (!confirm(`Thu hồi quyền truy cập dashboard của ${email}?`)) return;
+// Duyệt một tài khoản đang "Chờ duyệt" (đã đăng nhập bằng Firebase Auth có sẵn nhưng chưa có quyền) — cấp quyền Xem mặc định.
+async function approveUser(uid) {
   try {
-    await db.collection('users').doc(uid).delete();
+    await db.collection('users').doc(uid).set({ role: 'viewer', pendingApproval: false }, { merge: true });
+    loadUsersList();
+  } catch (e) {
+    alert('Lỗi duyệt tài khoản: ' + e.message);
+    loadUsersList();
+  }
+}
+
+async function removeUser(uid, email) {
+  if (!confirm(`Thu hồi quyền truy cập dashboard của ${email}? (Có thể khôi phục lại sau.)`)) return;
+  try {
+    await db.collection('users').doc(uid).set({ revoked: true }, { merge: true });
     loadUsersList();
   } catch (e) {
     alert('Lỗi thu hồi: ' + e.message);
+  }
+}
+
+// Cấp lại quyền cho một tài khoản đã bị thu hồi trước đó — không cần tạo lại tài khoản Firebase mới.
+async function restoreUser(uid, email) {
+  if (!confirm(`Khôi phục quyền truy cập dashboard cho ${email}?`)) return;
+  try {
+    await db.collection('users').doc(uid).set({ revoked: false }, { merge: true });
+    loadUsersList();
+  } catch (e) {
+    alert('Lỗi khôi phục: ' + e.message);
   }
 }
 
