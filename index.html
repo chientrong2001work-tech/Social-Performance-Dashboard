@@ -998,6 +998,16 @@ async function loadOrganicSeries(page, since, until) {
   const REACH_METRIC_CANDIDATES = ['page_total_media_view_unique', 'page_impressions_unique', 'page_views_total'];
   // engagement: page_post_engagements vẫn còn hoạt động tính tới hiện tại
   const ENGAGEMENT_METRIC_CANDIDATES = ['page_post_engagements', 'page_engaged_users'];
+  // follower growth: "page_fans"/"page_follows" là tổng lũy kế theo từng ngày (cumulative) — tăng
+  // trưởng trong khoảng thời gian = giá trị ngày cuối - giá trị ngày đầu; "page_fan_adds" là số
+  // lượt thích mới MỖI NGÀY (flow) nên tính bằng tổng cộng dồn, không phải hiệu số.
+  const FOLLOWER_METRIC_CANDIDATES = [
+    { metric: 'page_fans', type: 'cumulative' },
+    { metric: 'page_follows', type: 'cumulative' },
+    { metric: 'page_fan_adds', type: 'flow' },
+  ];
+  // watch time: tổng thời gian xem video của Trang, đơn vị mili-giây
+  const WATCHTIME_METRIC_CANDIDATES = ['page_video_view_time'];
 
   async function fetchFirstWorkingMetric(candidates) {
     for (const metric of candidates) {
@@ -1012,12 +1022,48 @@ async function loadOrganicSeries(page, since, until) {
     return null;
   }
 
-  const [reachRow, engagementRow] = await Promise.all([
+  async function fetchFollowerGrowth() {
+    for (const cand of FOLLOWER_METRIC_CANDIDATES) {
+      try {
+        const data = await fbGet(`${page.id}/insights`, { ...commonParams, metric: cand.metric }, page.access_token);
+        const row = (data.data || [])[0];
+        const values = row?.values || [];
+        if (!values.length) continue;
+        const sorted = [...values].sort((a, b) => (a.end_time || '').localeCompare(b.end_time || ''));
+        if (cand.type === 'cumulative') {
+          const first = Number(sorted[0].value) || 0;
+          const last = Number(sorted[sorted.length - 1].value) || 0;
+          return last - first;
+        }
+        return sorted.reduce((s, v) => s + (Number(v.value) || 0), 0);
+      } catch (err) {
+        // metric này bị Facebook chặn/khai tử → thử metric tiếp theo
+      }
+    }
+    return null;
+  }
+
+  async function fetchWatchTimeMs() {
+    for (const metric of WATCHTIME_METRIC_CANDIDATES) {
+      try {
+        const data = await fbGet(`${page.id}/insights`, { ...commonParams, metric }, page.access_token);
+        const row = (data.data || [])[0];
+        if (row) return (row.values || []).reduce((s, v) => s + (Number(v.value) || 0), 0);
+      } catch (err) {
+        // metric này bị Facebook chặn/khai tử → thử metric tiếp theo
+      }
+    }
+    return null;
+  }
+
+  const [reachRow, engagementRow, followerGrowth, watchTimeMs] = await Promise.all([
     fetchFirstWorkingMetric(REACH_METRIC_CANDIDATES),
     fetchFirstWorkingMetric(ENGAGEMENT_METRIC_CANDIDATES),
+    fetchFollowerGrowth().catch(() => null),
+    fetchWatchTimeMs().catch(() => null),
   ]);
 
-  const series = { reach: {}, engagement: {} };
+  const series = { reach: {}, engagement: {}, followerGrowth, watchTimeMs };
   function fillBucket(bucket, row) {
     if (!row) return;
     (row.values || []).forEach(v => {
@@ -1244,6 +1290,19 @@ function fmtVnd(n) {
   if (n === null || n === undefined || isNaN(n)) return '—';
   return Math.round(n).toLocaleString('vi-VN') + '₫';
 }
+function fmtSigned(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return (n > 0 ? '+' : '') + fmtNum(n);
+}
+function fmtDuration(ms) {
+  if (ms === null || ms === undefined || isNaN(ms)) return '—';
+  const totalMin = ms / 60000;
+  if (totalMin < 1) return '< 1 phút';
+  if (totalMin < 60) return `${Math.round(totalMin)} phút`;
+  const hours = totalMin / 60;
+  if (hours < 24) return `${hours.toFixed(1)} giờ`;
+  return `${fmtNum(hours)} giờ`;
+}
 function deltaHtml(pct) {
   if (pct === null || !isFinite(pct)) return `<span class="delta flat">— so với kỳ trước</span>`;
   const cls = pct > 0.5 ? 'good' : pct < -0.5 ? 'bad' : 'flat';
@@ -1286,13 +1345,24 @@ function renderKPIs(cur, prev, ads, agg) {
     ? (agg.totalEngagedFromPosts / reachCur * 100)
     : (agg ? agg.engRate : null);
 
-  // "Hiệu suất tổng thể" — 6 chỉ số chính, giống bố cục dashboard mẫu.
+  // Follower Growth & Watch Time: metric cấp Trang, lấy cùng lúc với Reach/Engagement trong
+  // loadOrganicSeries (xem ghi chú ở đó) — null nếu Facebook chặn/khai tử hết các metric ứng viên.
+  const followerGrowthCur = cur?.error ? null : cur?.followerGrowth;
+  const followerGrowthPrev = prev?.error ? null : prev?.followerGrowth;
+  const watchTimeCur = cur?.error ? null : cur?.watchTimeMs;
+  const watchTimePrev = prev?.error ? null : prev?.watchTimeMs;
+  const followerNote = `<span class="delta flat" title="Facebook hiện chưa trả metric Follower nào qua API cho Trang này">Chưa hỗ trợ qua API</span>`;
+  const watchTimeNote = `<span class="delta flat" title="Facebook hiện chưa trả metric Watch Time qua API cho Trang này">Chưa hỗ trợ qua API</span>`;
+
+  // "Hiệu suất tổng thể" — 8 chỉ số chính, giống bố cục dashboard mẫu.
   const mainCards = [
     { icon: '👁', label: 'Total Views', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
     { icon: '📶', label: 'Reach', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
     { icon: '💬', label: 'Engagement', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
     { icon: '🖱', label: 'Clicks', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : apiNote },
     { icon: '📈', label: 'Eng. Rate', value: (effectiveEngRate != null) ? effectiveEngRate.toFixed(1) + '%' : '—', delta: (effectiveEngRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : apiNote },
+    { icon: '👥', label: 'Follower Growth', value: (followerGrowthCur != null) ? fmtSigned(followerGrowthCur) : '—', delta: (followerGrowthCur != null) ? deltaHtml(pctDelta(followerGrowthCur, followerGrowthPrev)) : followerNote },
+    { icon: '🎬', label: 'Watch Time', value: (watchTimeCur != null) ? fmtDuration(watchTimeCur) : '—', delta: (watchTimeCur != null) ? deltaHtml(pctDelta(watchTimeCur, watchTimePrev)) : watchTimeNote },
     { icon: '📝', label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${DISPLAY_RANGE_DAYS} ngày</span>` },
   ];
   document.getElementById('kpiRow').innerHTML = mainCards.map(kpiCardHtml).join('');
