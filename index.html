@@ -321,7 +321,17 @@
   th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--gridline); }
   th { color: var(--text-secondary); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.msg-cell { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.msg-cell { max-width: 300px; }
+  .msg-cell-inner { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .post-thumb {
+    width: 40px; height: 40px; border-radius: 9px; object-fit: cover; flex: none;
+    box-shadow: var(--shadow-3d);
+  }
+  .post-thumb-placeholder {
+    width: 40px; height: 40px; border-radius: 9px; flex: none; display: flex; align-items: center;
+    justify-content: center; font-size: 16px; background: var(--page-plane); box-shadow: var(--shadow-3d);
+  }
+  .msg-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .empty-note { color: var(--muted); font-size: 12.5px; padding: 10px 0; }
 
   /* ---------- Explain the metrics ---------- */
@@ -1317,7 +1327,10 @@ async function loadPostsForRange(page, since, until) {
   // lập — nếu Facebook đổi/bỏ 1 metric nào đó trong tương lai, chỉ phần đó bị ảnh hưởng, không kéo
   // sập toàn bộ bảng bài đăng như trước.
   const [attachData, viewsData, clicksData, engagedData] = await Promise.all([
-    fbGet(`${page.id}/posts`, { fields: 'id,attachments{media_type}', ...commonParams }, page.access_token).catch(() => null),
+    // full_picture: ảnh đại diện của bài đăng (ảnh chính/thumbnail video/ảnh preview link) — field
+    // đơn giản cấp bài, gộp chung với attachments cho tiện, vẫn bọc try/catch độc lập như các phần
+    // khác nên nếu Facebook chặn field này thì bảng chỉ mất ảnh, không hỏng gì khác.
+    fbGet(`${page.id}/posts`, { fields: 'id,attachments{media_type},full_picture', ...commonParams }, page.access_token).catch(() => null),
     fbGet(`${page.id}/posts`, { fields: 'id,insights.metric(post_media_view,post_total_media_view_unique)', ...commonParams }, page.access_token).catch(() => null),
     fbGet(`${page.id}/posts`, { fields: 'id,insights.metric(post_clicks)', ...commonParams }, page.access_token).catch(() => null),
     // Engagement thật (reactions + comments + shares) — đây KHÔNG phải insights.metric (loại đã bị
@@ -1328,7 +1341,11 @@ async function loadPostsForRange(page, since, until) {
   ]);
 
   const mediaById = {};
-  (attachData?.data || []).forEach(p => { mediaById[p.id] = p.attachments?.data?.[0]?.media_type; });
+  const pictureById = {};
+  (attachData?.data || []).forEach(p => {
+    mediaById[p.id] = p.attachments?.data?.[0]?.media_type;
+    if (p.full_picture) pictureById[p.id] = p.full_picture;
+  });
 
   const viewsById = {};
   (viewsData?.data || []).forEach(p => {
@@ -1360,6 +1377,7 @@ async function loadPostsForRange(page, since, until) {
     date: (post.created_time || '').slice(0, 10),
     createdAt: post.created_time || '',
     mediaType: mediaById[post.id] || 'status',
+    picture: pictureById[post.id] || null,
     views: viewsById[post.id]?.views ?? 0,
     reach: viewsById[post.id]?.reach ?? 0,
     engaged: Object.prototype.hasOwnProperty.call(engagedById, post.id) ? engagedById[post.id] : null,
@@ -1962,13 +1980,22 @@ function renderPostsTable(posts) {
     return;
   }
   if (!posts.length) { el.innerHTML = `<div class="empty-note">Chưa có bài đăng nào trong khoảng thời gian này.</div>`; return; }
+  // Icon dự phòng khi bài đăng không có full_picture (vd: bài text thuần) — theo loại media.
+  const MEDIA_PLACEHOLDER_ICON = { video: '🎬', reel: '🎬', photo: '🖼️', album: '🖼️', share: '🔗', link: '🔗', status: '📝' };
   el.innerHTML = `
     <table>
       <thead><tr><th>Ngày</th><th>Nội dung</th><th class="num">Views</th><th class="num">Engaged</th><th class="num">Clicks</th></tr></thead>
       <tbody>
         ${posts.map(p => `<tr>
           <td>${p.date}</td>
-          <td class="msg-cell" title="${escapeHtml(p.message)}">${escapeHtml(p.message)}</td>
+          <td class="msg-cell" title="${escapeHtml(p.message)}">
+            <div class="msg-cell-inner">
+              ${p.picture
+                ? `<img class="post-thumb" src="${escapeHtml(p.picture)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;post-thumb-placeholder&quot;>${MEDIA_PLACEHOLDER_ICON[p.mediaType] || '📝'}</div>';">`
+                : `<div class="post-thumb-placeholder">${MEDIA_PLACEHOLDER_ICON[p.mediaType] || '📝'}</div>`}
+              <span class="msg-text">${escapeHtml(p.message)}</span>
+            </div>
+          </td>
           <td class="num">${fmtNum(p.views)}</td>
           <td class="num">${fmtNum(p.engaged)}</td>
           <td class="num">${fmtNum(p.clicks)}</td>
