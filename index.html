@@ -115,38 +115,39 @@
 
   /* ---------- Header / page switcher ---------- */
   header.topbar {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 22px 24px; flex-wrap: wrap;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 18px 20px; flex-wrap: wrap;
     background: var(--header-grad); border-radius: 16px;
     box-shadow: var(--shadow-3d);
     margin-top: 16px;
   }
-  .topbar-left { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-width: 260px; }
+  .topbar-left { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-width: 260px; }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 0 4px rgba(255,255,255,0.25); }
   .brand h1 { font-size: 18px; margin: 0; color: #fff; }
   .brand .who { font-size: 11.5px; color: rgba(255,255,255,0.78); margin-top: 2px; }
-  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .controls { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 
   /* ---------- Platform switcher (logo thật của app + chọn nền tảng) ----------
      Nằm bên phải header, kéo dài hết chiều cao để căn giữa theo cả khối tiêu đề + hàng điều khiển
      bên trái (topbar-left) — đúng theo ảnh mẫu người dùng gửi. Bố cục xếp dọc: icon tròn mềm ở
-     trên, "FACEBOOK" đậm bên dưới, "ANALYTICS REPORT ▾" nhỏ dưới cùng. */
+     trên, "FACEBOOK" đậm bên dưới, "ANALYTICS REPORT ▾" nhỏ dưới cùng. Kích thước được thu gọn để
+     luôn nằm cùng hàng, không bị rớt xuống dòng dưới khi khung nội dung (.wrap, tối đa 1180px) hẹp. */
   .platform-switcher { position: relative; flex: none; }
   .platform-btn {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
     background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28);
-    border-radius: 16px; padding: 14px 22px; cursor: pointer; color: #fff; min-width: 160px;
+    border-radius: 14px; padding: 9px 14px; cursor: pointer; color: #fff; min-width: 118px;
     transition: background .15s ease;
   }
   .platform-btn:hover { background: rgba(255,255,255,0.22); }
   .platform-btn .platform-icon {
-    width: 42px; height: 42px; border-radius: 11px; flex: none; box-shadow: var(--shadow-3d); overflow: hidden;
+    width: 30px; height: 30px; border-radius: 9px; flex: none; box-shadow: var(--shadow-3d); overflow: hidden;
   }
-  .platform-btn .platform-icon svg { display: block; width: 42px; height: 42px; }
-  .platform-name { font-size: 14px; font-weight: 800; letter-spacing: .05em; }
+  .platform-btn .platform-icon svg { display: block; width: 30px; height: 30px; }
+  .platform-name { font-size: 12.5px; font-weight: 800; letter-spacing: .04em; }
   .platform-sub-row { display: flex; align-items: center; gap: 4px; }
-  .platform-sub { font-size: 9.5px; color: rgba(255,255,255,0.75); letter-spacing: .04em; text-transform: uppercase; }
+  .platform-sub { font-size: 8.5px; color: rgba(255,255,255,0.75); letter-spacing: .03em; text-transform: uppercase; }
   .platform-chevron { font-size: 9px; opacity: .85; transition: transform .15s ease; }
   .platform-btn.open .platform-chevron { transform: rotate(180deg); }
   .platform-menu {
@@ -170,7 +171,7 @@
   }
   select, .icon-btn {
     background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.28);
-    border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+    border-radius: 8px; padding: 7px 9px; font-size: 12.5px; cursor: pointer;
     transition: background .15s ease, transform .15s ease;
   }
   select option { color: var(--text-primary); }
@@ -193,7 +194,7 @@
   .range-picker { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .range-picker button {
     background: var(--surface-1); color: var(--text-secondary); border: none; border-right: 1px solid var(--border);
-    padding: 8px 12px; font-size: 13px; cursor: pointer;
+    padding: 7px 9px; font-size: 12.5px; cursor: pointer;
   }
   .range-picker button:last-child { border-right: none; }
   .range-picker button.active { background: var(--brand-dark); color: #fff; }
