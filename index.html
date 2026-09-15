@@ -277,7 +277,11 @@
   .chart-card .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
   .chart-card .chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
   .bar {
-    fill: var(--series-reach); cursor: pointer;
+    /* KHÔNG đặt fill ở đây — mỗi cột đã có fill="url(#...)" trỏ tới <linearGradient> riêng
+       (đặt trực tiếp trên thẻ <rect>) để tạo dải màu gradient; một rule CSS class ở đây sẽ
+       luôn thắng thuộc tính fill trên thẻ (presentation attribute có độ ưu tiên thấp nhất
+       trong cascade), khiến toàn bộ cột bị "đè" về lại 1 màu phẳng duy nhất. */
+    cursor: pointer;
     transition: filter .15s ease, opacity .15s ease;
   }
   /* Chỉ đổi độ sáng/độ mờ khi hover — KHÔNG scale/phóng to cột, vì phóng to 1 cột sẽ đẩy nó
