@@ -142,7 +142,7 @@
 
   /* ---------- In báo cáo ---------- */
   @media print {
-    header.topbar .controls, #statusLine, #adminNavBtn, .csv-btn { display: none !important; }
+    header.topbar .controls, #statusLine, #adminNavBtn, .csv-btn, .toolbar2 { display: none !important; }
     body { background: #fff; }
     .kpi-card, .chart-card, .table-card { break-inside: avoid; }
   }
@@ -154,16 +154,59 @@
     background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
     padding: 14px 16px;
   }
-  .kpi-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .kpi-card .icon {
+    width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; margin-bottom: 8px; background: var(--page-plane); color: var(--brand-accent);
+  }
+  .kpi-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .02em; font-weight: 600; }
   .kpi-card .value { font-size: 24px; font-weight: 700; line-height: 1.1; }
   .kpi-card .delta { font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
   .kpi-card .delta.good { color: var(--good); }
   .kpi-card .delta.bad { color: var(--critical); }
   .kpi-card .delta.flat { color: var(--muted); }
   .kpi-card.mini { padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; }
+  .kpi-card.mini .icon { margin-bottom: 6px; }
   .kpi-card.mini .label { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
   .kpi-card.mini .value { font-size: 15px; font-weight: 600; }
   .kpi-card.mini .value .sub { font-size: 11px; font-weight: 400; color: var(--muted); display: block; }
+
+  /* ---------- Toolbar 2: khoảng ngày tuỳ ý + gộp theo Tháng/Tuần/Ngày ---------- */
+  .toolbar2 {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; margin-bottom: 16px; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 10px;
+  }
+  .toolbar2 label { font-size: 11px; color: var(--muted); margin-right: 4px; }
+  .toolbar2 input[type="date"] {
+    background: var(--page-plane); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 8px; font-size: 12.5px;
+  }
+  .granularity-picker { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .granularity-picker button {
+    background: var(--surface-1); color: var(--text-secondary); border: none; border-right: 1px solid var(--border);
+    padding: 7px 12px; font-size: 12.5px; cursor: pointer;
+  }
+  .granularity-picker button:last-child { border-right: none; }
+  .granularity-picker button.active { background: var(--brand-dark); color: #fff; }
+  .live-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+  .live-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+
+  /* ---------- Content-type donut ---------- */
+  .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .donut-legend { flex: 1; min-width: 140px; }
+  .donut-legend-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12.5px; }
+  .donut-legend-row .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .donut-legend-row .name { flex: 1; text-transform: capitalize; color: var(--text-secondary); }
+  .donut-legend-row .val { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---------- Chart metric toggle ---------- */
+  .metric-toggle { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+  .metric-toggle button {
+    background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 8px; font-size: 10.5px; cursor: pointer;
+  }
+  .metric-toggle button.active { background: var(--brand-dark); color: #fff; border-color: var(--brand-dark); }
+  .metric-toggle button:disabled { opacity: .4; cursor: not-allowed; }
 
   /* ---------- Funnel & content-type ---------- */
   .funnel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
@@ -289,9 +332,27 @@
   </header>
   <div id="statusLine"></div>
 
+  <div class="toolbar2">
+    <label for="customSince">Từ</label>
+    <input type="date" id="customSince" onchange="setCustomRange()">
+    <label for="customUntil">Đến</label>
+    <input type="date" id="customUntil" onchange="setCustomRange()">
+    <button class="icon-btn" onclick="resetRange()">Reset</button>
+    <div class="granularity-picker" id="granularityPicker">
+      <button data-g="day" class="active" onclick="setGranularity('day')">Ngày</button>
+      <button data-g="week" onclick="setGranularity('week')">Tuần</button>
+      <button data-g="month" onclick="setGranularity('month')">Tháng</button>
+    </div>
+    <div class="live-badge"><span class="dot"></span><span>Dữ liệu thực từ Facebook API</span></div>
+  </div>
+
   <div id="dashboardView">
+    <div class="section-title" style="margin-top:0;">Hiệu suất tổng thể</div>
     <div class="kpi-row" id="kpiRow"></div>
+    <div class="section-title">Bài viết nổi bật</div>
     <div class="kpi-row" id="kpiRow2"></div>
+    <div class="section-title">Quảng cáo (Ads)</div>
+    <div class="kpi-row" id="kpiRowAds"></div>
 
     <div class="section-title" id="trendTitle">Xu hướng 30 ngày gần nhất</div>
     <div class="chart-row" id="chartRow"></div>
@@ -306,7 +367,7 @@
       </div>
       <div class="table-card">
         <div class="chart-title">Loại nội dung</div>
-        <div class="chart-sub">Avg views &amp; Eng. Rate theo loại nội dung</div>
+        <div class="chart-sub">Tỷ trọng Views theo loại nội dung</div>
         <div id="ctypeBox" style="margin-top:10px;"></div>
       </div>
     </div>
@@ -409,7 +470,15 @@ const API_VERSION = 'v21.0';
 let CFG = { token: '', adAccountId: '' };
 let PAGES = [];          // [{id,name,access_token,category}]
 let CURRENT_PAGE = null; // selected page object
-let RANGE_DAYS = 30;     // khoảng thời gian đang chọn (7/30/90 ngày)
+let RANGE_DAYS = 30;     // khoảng thời gian đang chọn (7/30/90 ngày) — bỏ qua nếu có CUSTOM_SINCE/UNTIL
+let DISPLAY_RANGE_DAYS = 30; // số ngày thực tế đang hiển thị (RANGE_DAYS hoặc độ dài khoảng Từ–Đến tuỳ ý), dùng cho nhãn
+let CUSTOM_SINCE = null; // Date | null — khoảng ngày tuỳ ý (bộ Từ–Đến), ghi đè RANGE_DAYS khi có
+let CUSTOM_UNTIL = null; // Date | null
+let GRANULARITY = 'day'; // 'day' | 'week' | 'month' — cách gộp trục thời gian của mọi biểu đồ
+let POST_METRIC_DAILY = 'views'; // metric đang chọn cho biểu đồ "Daily View Data"
+let POST_METRIC_CUM = 'views';   // metric đang chọn cho biểu đồ "Cumulative Views"
+let LAST_AGG = null;     // kết quả aggregatePosts() gần nhất, dùng để vẽ lại biểu đồ khi đổi metric/granularity
+let LAST_ORGANIC_CUR = null; // dữ liệu organic (reach/engagement) kỳ hiện tại gần nhất, dùng để vẽ lại biểu đồ
 let LAST_TOP_POSTS = []; // dữ liệu bảng bài đăng gần nhất, dùng để xuất CSV
 let LAST_ADS = null;     // dữ liệu quảng cáo gần nhất, dùng để xuất CSV
 
@@ -727,14 +796,27 @@ async function refreshAll() {
   showLoading(true);
   setStatus('Đang tải số liệu cho "' + CURRENT_PAGE.name + '"…');
 
-  const until = new Date();
-  const since = daysAgo(RANGE_DAYS);
-  const prevUntil = daysAgo(RANGE_DAYS + 1);
-  const prevSince = daysAgo(RANGE_DAYS * 2);
+  // Nếu người dùng đã chọn khoảng ngày tuỳ ý (Từ–Đến) thì ưu tiên dùng khoảng đó, ghi đè RANGE_DAYS.
+  let until, since, prevUntil, prevSince, rangeDaysForLabel;
+  if (CUSTOM_SINCE && CUSTOM_UNTIL) {
+    since = CUSTOM_SINCE;
+    until = CUSTOM_UNTIL;
+    const spanMs = Math.max(1, until.getTime() - since.getTime());
+    prevUntil = new Date(since.getTime() - 24 * 3600 * 1000);
+    prevSince = new Date(prevUntil.getTime() - spanMs);
+    rangeDaysForLabel = Math.round(spanMs / (24 * 3600 * 1000)) + 1;
+  } else {
+    until = new Date();
+    since = daysAgo(RANGE_DAYS);
+    prevUntil = daysAgo(RANGE_DAYS + 1);
+    prevSince = daysAgo(RANGE_DAYS * 2);
+    rangeDaysForLabel = RANGE_DAYS;
+  }
+  DISPLAY_RANGE_DAYS = rangeDaysForLabel;
   document.getElementById('rangeLabel').textContent =
     `${fmtDate(since)} → ${fmtDate(until)} (so với ${fmtDate(prevSince)} → ${fmtDate(prevUntil)})`;
   const trendTitleEl = document.getElementById('trendTitle');
-  if (trendTitleEl) trendTitleEl.textContent = `Xu hướng ${RANGE_DAYS} ngày gần nhất`;
+  if (trendTitleEl) trendTitleEl.textContent = `Xu hướng ${rangeDaysForLabel} ngày gần nhất`;
 
   try {
     const [organicCur, organicPrev, posts, ads] = await Promise.all([
@@ -749,6 +831,8 @@ async function refreshAll() {
     const topPosts = postsOk ? [...posts].sort((a, b) => b.views - a.views).slice(0, 10) : posts;
     LAST_TOP_POSTS = postsOk ? topPosts : [];
     LAST_ADS = ads;
+    LAST_AGG = agg;
+    LAST_ORGANIC_CUR = organicCur;
 
     renderKPIs(organicCur, organicPrev, ads, agg);
     renderKPIs2(agg);
@@ -783,10 +867,74 @@ async function refreshAll() {
    ============================================================ */
 function setRangeDays(days) {
   RANGE_DAYS = days;
+  // Bấm nút nhanh 7/30/90 ngày sẽ huỷ khoảng Từ–Đến tuỳ ý đang chọn (nếu có).
+  CUSTOM_SINCE = null;
+  CUSTOM_UNTIL = null;
+  document.getElementById('customSince').value = '';
+  document.getElementById('customUntil').value = '';
   document.querySelectorAll('#rangePicker button').forEach(btn => {
     btn.classList.toggle('active', Number(btn.dataset.days) === days);
   });
   refreshAll();
+}
+
+/* ============================================================
+   KHOẢNG NGÀY TUỲ Ý (Từ – Đến) & GỘP THEO NGÀY/TUẦN/THÁNG
+   ============================================================ */
+function setCustomRange() {
+  const sinceVal = document.getElementById('customSince').value;
+  const untilVal = document.getElementById('customUntil').value;
+  if (!sinceVal || !untilVal) return; // chờ người dùng chọn đủ cả 2 ngày
+  const since = new Date(sinceVal + 'T00:00:00');
+  const until = new Date(untilVal + 'T23:59:59');
+  if (since.getTime() > until.getTime()) {
+    setStatus('Ngày "Từ" phải trước ngày "Đến".', true);
+    return;
+  }
+  CUSTOM_SINCE = since;
+  CUSTOM_UNTIL = until;
+  // Bỏ trạng thái active của các nút nhanh 7/30/90 ngày vì đang dùng khoảng tuỳ ý.
+  document.querySelectorAll('#rangePicker button').forEach(btn => btn.classList.remove('active'));
+  refreshAll();
+}
+
+function resetRange() {
+  CUSTOM_SINCE = null;
+  CUSTOM_UNTIL = null;
+  document.getElementById('customSince').value = '';
+  document.getElementById('customUntil').value = '';
+  setRangeDays(30);
+}
+
+function setGranularity(g) {
+  GRANULARITY = g;
+  document.querySelectorAll('#granularityPicker button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.g === g);
+  });
+  // Không cần gọi lại API — chỉ vẽ lại biểu đồ từ dữ liệu ngày đã có sẵn (LAST_AGG/dữ liệu organic/ads gần nhất).
+  renderCharts(LAST_ORGANIC_CUR, LAST_ADS, LAST_AGG);
+}
+
+// Gộp 1 series {ngày: giá trị} theo granularity 'day' | 'week' | 'month'. Tuần bắt đầu từ Thứ 2 (ISO).
+function bucketSeries(seriesObj, granularity) {
+  if (!seriesObj || granularity === 'day') return seriesObj || {};
+  const out = {};
+  Object.keys(seriesObj).forEach(dateStr => {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return;
+    let key;
+    if (granularity === 'month') {
+      key = dateStr.slice(0, 7); // YYYY-MM
+    } else {
+      // week: quy về ngày Thứ 2 của tuần đó (ISO week start)
+      const dow = (d.getDay() + 6) % 7; // 0 = Thứ 2
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - dow);
+      key = fmtDate(monday);
+    }
+    out[key] = (out[key] || 0) + seriesObj[dateStr];
+  });
+  return out;
 }
 
 /* ============================================================
@@ -964,7 +1112,14 @@ function aggregatePosts(posts) {
   const totalEngagedFromPosts = hasEngaged ? posts.reduce((s, p) => s + (p.engaged || 0), 0) : null;
 
   const dailyViews = {};
-  posts.forEach(p => { if (p.date) dailyViews[p.date] = (dailyViews[p.date] || 0) + p.views; });
+  const dailyReach = {};
+  const dailyClicks = hasClicks ? {} : null;
+  posts.forEach(p => {
+    if (!p.date) return;
+    dailyViews[p.date] = (dailyViews[p.date] || 0) + p.views;
+    dailyReach[p.date] = (dailyReach[p.date] || 0) + p.reach;
+    if (dailyClicks) dailyClicks[p.date] = (dailyClicks[p.date] || 0) + (p.clicks || 0);
+  });
 
   const hourBuckets = {}, dayBuckets = {};
   posts.forEach(p => {
@@ -1000,6 +1155,7 @@ function aggregatePosts(posts) {
   const typeRows = Object.entries(typeBuckets).map(([type, v]) => ({
     type: MEDIA_TYPE_LABELS[type] || type,
     avgViews: v.count ? v.views / v.count : 0,
+    totalViews: v.views,
     count: v.count,
   })).sort((a, b) => b.avgViews - a.avgViews);
 
@@ -1011,7 +1167,7 @@ function aggregatePosts(posts) {
   const postCount = posts.length;
 
   return {
-    totalViews, totalClicks, totalEngagedFromPosts, dailyViews, bestHourLabel, bestDayLabel,
+    totalViews, totalClicks, totalEngagedFromPosts, dailyViews, dailyReach, dailyClicks, bestHourLabel, bestDayLabel,
     typeRows, videoLikeCount, totalReachFromPosts, engRate, topPost, postCount,
   };
 }
@@ -1082,6 +1238,16 @@ function deltaHtml(pct) {
   return `<span class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(1)}% so với kỳ trước</span>`;
 }
 
+function kpiCardHtml(c) {
+  return `
+    <div class="kpi-card">
+      ${c.icon ? `<div class="icon">${c.icon}</div>` : ''}
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      ${c.delta}
+    </div>`;
+}
+
 function renderKPIs(cur, prev, ads, agg) {
   const reachCur = cur?.error ? null : seriesTotal(cur.reach);
   const reachPrev = prev?.error ? null : seriesTotal(prev.reach);
@@ -1093,27 +1259,29 @@ function renderKPIs(cur, prev, ads, agg) {
 
   const organicUnavailable = !!cur?.error;
   const organicNote = `<span class="delta flat" title="Facebook đã ngừng hỗ trợ chỉ số này qua API cho Trang này">Facebook chưa hỗ trợ dữ liệu này</span>`;
+  const apiNote = `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>`;
 
   const postsNote = `<span class="delta flat">Không lấy được dữ liệu bài đăng</span>`;
   const postCountLabel = agg ? `<span class="delta flat">Từ ${fmtNum(agg.postCount)} bài đăng</span>` : postsNote;
 
-  const cards = [
-    { label: 'Tổng Reach (organic)', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
-    { label: 'Tổng Engagement (organic)', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
-    { label: 'Tổng Views (bài đăng)', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
-    { label: 'Tổng Clicks (bài đăng)', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>` },
-    { label: 'Eng. Rate (bài đăng)', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: (agg && agg.engRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : `<span class="delta flat" title="Facebook hiện chưa trả chỉ số này theo bài đăng qua API">Chưa hỗ trợ qua API</span>` },
-    { label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${RANGE_DAYS} ngày</span>` },
-    { label: `Chi phí Ads (${RANGE_DAYS} ngày)`, value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
-    { label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
-    { label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình ${RANGE_DAYS} ngày</span>` },
+  // "Hiệu suất tổng thể" — 6 chỉ số chính, giống bố cục dashboard mẫu.
+  const mainCards = [
+    { icon: '👁', label: 'Total Views', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
+    { icon: '📶', label: 'Reach', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
+    { icon: '💬', label: 'Engagement', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
+    { icon: '🖱', label: 'Clicks', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : apiNote },
+    { icon: '📈', label: 'Eng. Rate', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: (agg && agg.engRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : apiNote },
+    { icon: '📝', label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${DISPLAY_RANGE_DAYS} ngày</span>` },
   ];
-  document.getElementById('kpiRow').innerHTML = cards.map(c => `
-    <div class="kpi-card">
-      <div class="label">${c.label}</div>
-      <div class="value">${c.value}</div>
-      ${c.delta}
-    </div>`).join('');
+  document.getElementById('kpiRow').innerHTML = mainCards.map(kpiCardHtml).join('');
+
+  // "Quảng cáo (Ads)" — tách riêng khỏi hiệu suất organic/bài đăng để không lẫn 2 nguồn dữ liệu.
+  const adsCards = [
+    { icon: '💰', label: `Chi phí Ads (${DISPLAY_RANGE_DAYS} ngày)`, value: fmtVnd(spend), delta: `<span class="delta flat">Toàn tài khoản Ads</span>` },
+    { icon: '✉️', label: 'Messages Started', value: fmtNum(messages), delta: `<span class="delta flat">Từ Messenger ads</span>` },
+    { icon: '⚖️', label: 'Cost / Message', value: fmtVnd(cpm), delta: `<span class="delta flat">Trung bình ${DISPLAY_RANGE_DAYS} ngày</span>` },
+  ];
+  document.getElementById('kpiRowAds').innerHTML = adsCards.map(kpiCardHtml).join('');
 }
 
 function renderKPIs2(agg) {
@@ -1124,13 +1292,14 @@ function renderKPIs2(agg) {
   }
   const top = agg.topPost;
   const cards = [
-    { label: 'Bài Top (nhiều views nhất)', value: top ? fmtNum(top.views) : '—', sub: top ? top.date : '' },
-    { label: 'Giờ đăng tốt nhất', value: agg.bestHourLabel, sub: 'Trung bình views cao nhất' },
-    { label: 'Ngày đăng tốt nhất', value: agg.bestDayLabel, sub: 'Trung bình views cao nhất' },
-    { label: 'Total Watch (Video/Reel)', value: fmtNum(agg.videoLikeCount), sub: 'Số bài video & reel' },
+    { icon: '🏆', label: 'Bài Top (nhiều views nhất)', value: top ? fmtNum(top.views) : '—', sub: top ? (top.date + ' · ' + top.message.slice(0, 40)) : '' },
+    { icon: '🕒', label: 'Giờ đăng tốt nhất', value: agg.bestHourLabel, sub: 'Trung bình views cao nhất' },
+    { icon: '📅', label: 'Ngày đăng tốt nhất', value: agg.bestDayLabel, sub: 'Trung bình views cao nhất' },
+    { icon: '▶️', label: 'Total Watch (Video/Reel)', value: fmtNum(agg.videoLikeCount), sub: 'Số bài video & reel' },
   ];
   el.innerHTML = cards.map(c => `
     <div class="kpi-card mini">
+      <div class="icon">${c.icon}</div>
       <div class="label">${c.label}</div>
       <div class="value">${c.value}${c.sub ? `<span class="sub">${escapeHtml(c.sub)}</span>` : ''}</div>
     </div>`).join('');
@@ -1139,6 +1308,26 @@ function renderKPIs2(agg) {
 /* ============================================================
    RENDER — small-multiple bar charts (SVG)
    ============================================================ */
+const POST_METRIC_LABELS = { views: 'Views', reach: 'Reach', clicks: 'Clicks' };
+const POST_METRIC_COLORS = { views: 'var(--series-reach)', reach: 'var(--series-engage)', clicks: 'var(--series-msg)' };
+
+function setPostMetric(which, metric) {
+  if (which === 'daily') POST_METRIC_DAILY = metric; else POST_METRIC_CUM = metric;
+  renderCharts(LAST_ORGANIC_CUR, LAST_ADS, LAST_AGG);
+}
+
+// Chèn hàng nút chọn metric (Views/Reach/Clicks) vào đầu 1 chart-card đã dựng sẵn.
+function prependMetricToggle(cardEl, which, seriesMap) {
+  const current = which === 'daily' ? POST_METRIC_DAILY : POST_METRIC_CUM;
+  const toggle = document.createElement('div');
+  toggle.className = 'metric-toggle';
+  toggle.innerHTML = ['views', 'reach', 'clicks'].map(m => {
+    const disabled = seriesMap[m] == null;
+    return `<button ${disabled ? 'disabled title="Chưa có dữ liệu"' : ''} class="${m === current ? 'active' : ''}" onclick="setPostMetric('${which}','${m}')">${POST_METRIC_LABELS[m]}</button>`;
+  }).join('');
+  cardEl.insertBefore(toggle, cardEl.firstChild);
+}
+
 function renderCharts(organicCur, ads, agg) {
   const organicUnavailable = !!organicCur?.error;
   const reachSeries = organicUnavailable ? {} : organicCur.reach;
@@ -1147,11 +1336,11 @@ function renderCharts(organicCur, ads, agg) {
 
   const row = document.getElementById('chartRow');
   row.innerHTML = '';
-  row.appendChild(barChartCard('Reach hàng ngày (organic)', reachSeries, 'var(--series-reach)', false,
+  row.appendChild(barChartCard('Reach hàng ngày (organic)', bucketSeries(reachSeries, GRANULARITY), 'var(--series-reach)', false,
     organicUnavailable ? 'Facebook đã ngừng hỗ trợ chỉ số organic này qua API cho Trang này.' : null));
-  row.appendChild(barChartCard('Engagement hàng ngày (organic)', engSeries, 'var(--series-engage)', false,
+  row.appendChild(barChartCard('Engagement hàng ngày (organic)', bucketSeries(engSeries, GRANULARITY), 'var(--series-engage)', false,
     organicUnavailable ? 'Facebook đã ngừng hỗ trợ chỉ số organic này qua API cho Trang này.' : null));
-  row.appendChild(barChartCard('Messages Started / ngày (ước tính)', msgSeries, 'var(--series-msg)', true));
+  row.appendChild(barChartCard('Messages Started / ngày (ước tính)', bucketSeries(msgSeries, GRANULARITY), 'var(--series-msg)', true));
 
   const row2 = document.getElementById('chartRow2');
   row2.innerHTML = '';
@@ -1160,9 +1349,23 @@ function renderCharts(organicCur, ads, agg) {
     row2.appendChild(barChartCard('Cumulative Views (bài đăng)', {}, 'var(--series-engage)', false, 'Không lấy được dữ liệu bài đăng.'));
     return;
   }
-  row2.appendChild(barChartCard('Daily View Data (bài đăng)', agg.dailyViews, 'var(--series-reach)', false, null));
-  const cumulative = buildCumulativeSeries(agg.dailyViews);
-  row2.appendChild(lineChartCard('Cumulative Views (bài đăng)', cumulative, 'var(--series-engage)', `Tổng views luỹ kế ${RANGE_DAYS} ngày`));
+
+  const dailySeriesMap = { views: agg.dailyViews, reach: agg.dailyReach, clicks: agg.dailyClicks };
+  // Nếu metric đang chọn không có dữ liệu (vd đổi sang Trang không có Clicks) thì tự quay về Views.
+  if (dailySeriesMap[POST_METRIC_DAILY] == null) POST_METRIC_DAILY = 'views';
+  if (dailySeriesMap[POST_METRIC_CUM] == null) POST_METRIC_CUM = 'views';
+
+  const dailyCard = barChartCard(`Daily View Data (bài đăng) — ${POST_METRIC_LABELS[POST_METRIC_DAILY]}`,
+    bucketSeries(dailySeriesMap[POST_METRIC_DAILY], GRANULARITY), POST_METRIC_COLORS[POST_METRIC_DAILY], false, null);
+  prependMetricToggle(dailyCard, 'daily', dailySeriesMap);
+  row2.appendChild(dailyCard);
+
+  const bucketedForCum = bucketSeries(dailySeriesMap[POST_METRIC_CUM], GRANULARITY);
+  const cumulative = buildCumulativeSeries(bucketedForCum);
+  const cumCard = lineChartCard(`Cumulative Views (bài đăng) — ${POST_METRIC_LABELS[POST_METRIC_CUM]}`, cumulative, POST_METRIC_COLORS[POST_METRIC_CUM],
+    `Tổng ${POST_METRIC_LABELS[POST_METRIC_CUM].toLowerCase()} luỹ kế ${DISPLAY_RANGE_DAYS} ngày`);
+  prependMetricToggle(cumCard, 'cum', dailySeriesMap);
+  row2.appendChild(cumCard);
 }
 
 function buildCumulativeSeries(dailyViews) {
@@ -1236,7 +1439,7 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
 
   wrap.innerHTML = `
     <div class="chart-title">${title}</div>
-    <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : RANGE_DAYS + ' ngày gần nhất'}</div>
+    <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : DISPLAY_RANGE_DAYS + ' ngày gần nhất'}</div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${grid}${bars}${baseline}${labels}</svg>
   `;
 
@@ -1300,7 +1503,7 @@ function lineChartCard(title, seriesObj, color, subtitle) {
 
   wrap.innerHTML = `
     <div class="chart-title">${title}</div>
-    <div class="chart-sub">${subtitle || RANGE_DAYS + ' ngày gần nhất'}</div>
+    <div class="chart-sub">${subtitle || DISPLAY_RANGE_DAYS + ' ngày gần nhất'}</div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
       ${grid}
       <path d="${areaPath}" fill="${color}" opacity="0.12" stroke="none"></path>
@@ -1356,22 +1559,42 @@ function renderFunnel(agg) {
   }).join('') + note;
 }
 
+const DONUT_PALETTE = ['var(--series-reach)', 'var(--series-engage)', 'var(--series-msg)', 'var(--series-spend)', '#b08a3e', '#7a7a7a'];
+
 function renderContentTypes(agg) {
   const el = document.getElementById('ctypeBox');
   if (!agg || !agg.typeRows.length) {
     el.innerHTML = `<div class="empty-note">Chưa có đủ dữ liệu bài đăng để phân loại nội dung.</div>`;
     return;
   }
-  const maxAvgViews = Math.max(1, ...agg.typeRows.map(r => r.avgViews));
-  el.innerHTML = agg.typeRows.map(r => {
-    const pct = Math.max(4, Math.min(100, (r.avgViews / maxAvgViews) * 100));
+  const totalViewsAll = agg.typeRows.reduce((s, r) => s + r.totalViews, 0) || 1;
+  const r = 40, cx = 50, cy = 50, circumference = 2 * Math.PI * r;
+  let offset = 0;
+  const segments = agg.typeRows.map((row, i) => {
+    const share = row.totalViews / totalViewsAll;
+    const dash = Math.max(0, share * circumference);
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${DONUT_PALETTE[i % DONUT_PALETTE.length]}"
+      stroke-width="16" stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}"
+      stroke-dashoffset="${(-offset).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
+    offset += dash;
+    return seg;
+  }).join('');
+
+  const legend = agg.typeRows.map((row, i) => {
+    const pct = (row.totalViews / totalViewsAll * 100).toFixed(1);
     return `
-      <div class="ctype-row">
-        <div class="ctype-name">${escapeHtml(r.type)}</div>
-        <div class="ctype-track"><div class="ctype-fill" style="width:${pct.toFixed(1)}%;"></div></div>
-        <div class="ctype-val">${fmtNum(r.avgViews)} views TB · ${r.count} bài</div>
+      <div class="donut-legend-row">
+        <span class="swatch" style="background:${DONUT_PALETTE[i % DONUT_PALETTE.length]};"></span>
+        <span class="name">${escapeHtml(row.type)} · ${row.count} bài</span>
+        <span class="val">${fmtNum(row.totalViews)} · ${pct}%</span>
       </div>`;
   }).join('');
+
+  el.innerHTML = `
+    <div class="donut-wrap">
+      <svg viewBox="0 0 100 100" width="120" height="120">${segments}</svg>
+      <div class="donut-legend">${legend}</div>
+    </div>`;
 }
 
 /* ============================================================
