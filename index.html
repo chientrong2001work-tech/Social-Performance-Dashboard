@@ -1695,6 +1695,21 @@ function axisGridWithLabels(axisMax, padL, padT, plotW, plotH, W, padR) {
   return grid;
 }
 
+// Đếm tăng dần để sinh id <linearGradient> duy nhất cho từng biểu đồ cột trên trang
+// (tránh trùng id giữa nhiều thẻ biểu đồ khi có nhiều <svg> cùng lúc).
+let CHART_GRAD_SEQ = 0;
+
+// Làm nhạt một màu hex theo tỉ lệ pha với trắng — dùng để tạo 2 điểm dừng (stop) sáng/đậm
+// cho dải màu gradient của cột biểu đồ và thanh funnel, thay vì màu phẳng đơn sắc.
+function lightenHex(hex, ratio) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return hex; // không phải hex thuần (vd: var(--x)) -> trả nguyên, dùng color-mix() ở nơi gọi
+  const num = parseInt(m[1], 16);
+  const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  const mix = (c) => Math.round(c + (255 - c) * ratio);
+  return `#${[mix(r), mix(g), mix(b)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
 function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   const wrap = document.createElement('div');
   wrap.className = 'chart-card card-3d';
@@ -1715,13 +1730,21 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   const barGap = 2;
   const barW = dates.length ? Math.max(1, plotW / dates.length - barGap) : 0;
 
+  // Dải màu gradient (sáng -> đậm, từ trên xuống dưới) cho các cột, thay vì 1 màu phẳng.
+  const gradId = 'barGrad' + (++CHART_GRAD_SEQ);
+  const lightStop = /^#?[0-9a-f]{6}$/i.test(color) ? lightenHex(color, 0.55) : `color-mix(in srgb, ${color} 45%, white)`;
+  const gradDefs = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${lightStop}"></stop>
+    <stop offset="100%" stop-color="${color}"></stop>
+  </linearGradient></defs>`;
+
   let bars = '';
   dates.forEach((d, i) => {
     const v = values[i];
     const h = axisMax ? (v / axisMax) * plotH : 0;
     const x = padL + i * (barW + barGap);
     const y = padT + (plotH - h);
-    bars += `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" rx="2" ry="2" fill="${color}" data-date="${d}" data-val="${v}"></rect>`;
+    bars += `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" rx="2" ry="2" fill="url(#${gradId})" data-date="${d}" data-val="${v}"></rect>`;
   });
 
   // Đường lưới ngang (đường đối chiếu) kèm nhãn giá trị 0 → axisMax, giống biểu đồ mẫu.
@@ -1741,7 +1764,7 @@ function barChartCard(title, seriesObj, color, isApprox, emptyNote) {
   wrap.innerHTML = `
     <div class="chart-title">${title}</div>
     <div class="chart-sub">${isApprox ? 'Ước tính chia đều từ tổng chiến dịch (Marketing API không trả breakdown theo Page)' : DISPLAY_RANGE_DAYS + ' ngày gần nhất'}</div>
-    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${grid}${bars}${labels}</svg>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${gradDefs}${grid}${bars}${labels}</svg>
   `;
 
   const svg = wrap.querySelector('svg');
@@ -1859,10 +1882,12 @@ function renderFunnel(agg, organicCur) {
   el.innerHTML = steps.map((s, i) => {
     const pct = max ? (s.value / max * 100) : 0;
     const widthPct = Math.max(4, Math.min(100, pct));
+    const fc = FUNNEL_COLORS[i % FUNNEL_COLORS.length];
+    const fcLight = lightenHex(fc, 0.45);
     return `
       <div class="funnel-step">
         <div class="flabel">${s.label}</div>
-        <div class="fbar" style="width:${widthPct.toFixed(1)}%;background:${FUNNEL_COLORS[i % FUNNEL_COLORS.length]};">${fmtNum(s.value)}</div>
+        <div class="fbar" style="width:${widthPct.toFixed(1)}%;background:linear-gradient(90deg, ${fcLight}, ${fc});">${fmtNum(s.value)}</div>
         <div class="fpct">${pct.toFixed(1)}%</div>
       </div>`;
   }).join('') + note;
@@ -1887,7 +1912,7 @@ function renderContentTypes(agg) {
     const pct = (share * 100).toFixed(1);
     const seg = `<circle class="donut-seg" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${DONUT_PALETTE[i % DONUT_PALETTE.length]}"
       stroke-dasharray="${dash.toFixed(1)} ${(circumference - dash).toFixed(1)}"
-      stroke-dashoffset="${(-offset).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"
+      stroke-dashoffset="${(-offset).toFixed(1)}"
       data-label="${escapeHtml(row.type)}" data-val="${fmtNum(row.totalViews)} views · ${pct}%"></circle>`;
     offset += dash;
     return seg;
@@ -1905,7 +1930,9 @@ function renderContentTypes(agg) {
 
   el.innerHTML = `
     <div class="donut-wrap">
-      <svg viewBox="0 0 100 100" width="120" height="120">${segments}</svg>
+      <svg viewBox="0 0 100 100" width="120" height="120">
+        <g transform="rotate(-90 ${cx} ${cy})">${segments}</g>
+      </svg>
       <div class="donut-legend">${legend}</div>
     </div>`;
 
