@@ -126,6 +126,46 @@
   .brand h1 { font-size: 18px; margin: 0; color: #fff; }
   .brand .who { font-size: 11.5px; color: rgba(255,255,255,0.78); margin-top: 2px; }
   .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- Platform switcher (logo + chọn nền tảng, ở góc phải header) ---------- */
+  .platform-switcher { position: relative; }
+  .platform-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 10px; padding: 6px 10px 6px 6px; cursor: pointer; color: #fff;
+    transition: background .15s ease;
+  }
+  .platform-btn:hover { background: rgba(255,255,255,0.22); }
+  .platform-icon {
+    width: 30px; height: 30px; border-radius: 8px; background: #fff; display: flex;
+    align-items: center; justify-content: center; font-size: 16px; flex: none; box-shadow: var(--shadow-3d);
+  }
+  .platform-label { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
+  .platform-name { font-size: 11.5px; font-weight: 800; letter-spacing: .03em; }
+  .platform-sub { font-size: 9.5px; color: rgba(255,255,255,0.75); }
+  .platform-chevron { font-size: 9px; opacity: .85; margin-left: 1px; transition: transform .15s ease; }
+  .platform-btn.open .platform-chevron { transform: rotate(180deg); }
+  .platform-menu {
+    position: absolute; top: calc(100% + 8px); right: 0; background: var(--surface-1);
+    border-radius: 12px; box-shadow: var(--shadow-3d-hover); padding: 6px; min-width: 210px; z-index: 60;
+  }
+  .platform-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 9px; border-radius: 8px;
+    background: none; border: none; cursor: pointer; font-size: 13px; color: var(--text-primary); text-align: left;
+  }
+  .platform-item:hover { background: var(--page-plane); }
+  .platform-item.active { background: var(--page-plane); font-weight: 700; }
+  .platform-item.soon { opacity: .6; }
+  .platform-item .p-icon {
+    width: 26px; height: 26px; border-radius: 7px; background: var(--page-plane); display: flex;
+    align-items: center; justify-content: center; font-size: 14px; flex: none;
+  }
+  .platform-item .p-name { flex: 1; }
+  .platform-item .p-check { color: var(--good); font-size: 14px; font-weight: 700; }
+  .platform-item .soon-badge {
+    font-size: 9.5px; font-weight: 700; color: var(--muted); background: var(--page-plane);
+    border: 1px solid var(--gridline); border-radius: 20px; padding: 2px 7px; white-space: nowrap;
+  }
   select, .icon-btn {
     background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.28);
     border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
@@ -416,6 +456,33 @@
       <button class="icon-btn" onclick="window.print()">&#x1F5B6; In báo cáo</button>
       <button class="icon-btn" id="adminNavBtn" hidden onclick="toggleAdminView()">Quản lý người dùng</button>
       <button class="icon-btn" onclick="doLogout()">Đăng xuất</button>
+
+      <!-- Chọn nền tảng: hiện tại chỉ Facebook có dữ liệu thật; Instagram/TikTok/YouTube là chỗ đặt
+           trước cho giao diện, chưa nối API — bấm vào chỉ hiện ghi chú, không đổi dữ liệu đang xem. -->
+      <div class="platform-switcher" id="platformSwitcher">
+        <button class="platform-btn" id="platformBtn" onclick="togglePlatformMenu(event)">
+          <span class="platform-icon">📘</span>
+          <span class="platform-label">
+            <span class="platform-name">FACEBOOK</span>
+            <span class="platform-sub">Analytics Report</span>
+          </span>
+          <span class="platform-chevron">▾</span>
+        </button>
+        <div class="platform-menu" id="platformMenu" hidden>
+          <button class="platform-item active" onclick="selectPlatform('Facebook', true)">
+            <span class="p-icon">📘</span><span class="p-name">Facebook</span><span class="p-check">✓</span>
+          </button>
+          <button class="platform-item soon" onclick="selectPlatform('Instagram', false)">
+            <span class="p-icon">📸</span><span class="p-name">Instagram</span><span class="soon-badge">Sắp có</span>
+          </button>
+          <button class="platform-item soon" onclick="selectPlatform('TikTok', false)">
+            <span class="p-icon">🎵</span><span class="p-name">TikTok</span><span class="soon-badge">Sắp có</span>
+          </button>
+          <button class="platform-item soon" onclick="selectPlatform('YouTube', false)">
+            <span class="p-icon">▶️</span><span class="p-name">YouTube</span><span class="soon-badge">Sắp có</span>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -714,6 +781,35 @@ function setMsg(elId, text, kind) {
   el.textContent = text;
   el.className = 'msg-box' + (kind ? ' ' + kind : '');
   el.style.display = text ? 'block' : 'none';
+}
+
+/* ============================================================
+   PLATFORM SWITCHER — hiện tại chỉ Facebook có dữ liệu thật.
+   Instagram/TikTok/YouTube là chỗ đặt trước giao diện (mô phỏng), CHƯA kết nối API — bấm vào
+   không đổi dữ liệu đang xem, chỉ hiện ghi chú. Sau này nối API thật thì viết logic đổi nguồn dữ
+   liệu ngay trong hàm selectPlatform() bên dưới.
+   ============================================================ */
+function togglePlatformMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('platformMenu');
+  const btn = document.getElementById('platformBtn');
+  const willOpen = menu.hidden;
+  menu.hidden = !willOpen;
+  btn.classList.toggle('open', willOpen);
+}
+document.addEventListener('click', (e) => {
+  const sw = document.getElementById('platformSwitcher');
+  if (sw && !sw.contains(e.target)) {
+    document.getElementById('platformMenu').hidden = true;
+    document.getElementById('platformBtn').classList.remove('open');
+  }
+});
+function selectPlatform(name, isConnected) {
+  document.getElementById('platformMenu').hidden = true;
+  document.getElementById('platformBtn').classList.remove('open');
+  if (!isConnected) {
+    setStatus(`${name}: giao diện đã sẵn sàng, chưa kết nối API — sẽ bổ sung ở bản cập nhật sau. Dữ liệu đang xem vẫn là Facebook.`, false);
+  }
 }
 
 /* ============================================================
