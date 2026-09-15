@@ -837,7 +837,7 @@ async function refreshAll() {
     renderKPIs(organicCur, organicPrev, ads, agg);
     renderKPIs2(agg);
     renderCharts(organicCur, ads, agg);
-    renderFunnel(agg);
+    renderFunnel(agg, organicCur);
     renderContentTypes(agg);
     renderPostsTable(topPosts);
     renderCampaignsTable(ads);
@@ -1277,13 +1277,22 @@ function renderKPIs(cur, prev, ads, agg) {
   const postsNote = `<span class="delta flat">Không lấy được dữ liệu bài đăng</span>`;
   const postCountLabel = agg ? `<span class="delta flat">Từ ${fmtNum(agg.postCount)} bài đăng</span>` : postsNote;
 
+  // Eng. Rate = Engaged (thật, theo từng bài) / Reach. Reach THEO TỪNG BÀI hiện bị Facebook chặn qua
+  // API (post_total_media_view_unique luôn = 0) nên agg.engRate (tính trên tổng reach-theo-bài) sẽ
+  // luôn null — dùng tạm Reach TỔNG CẤP TRANG (reachCur, cùng nguồn với ô KPI "Reach" bên trên) làm
+  // mẫu số thay thế, vì đó là ước lượng reach tốt nhất hiện có qua API công khai.
+  const hasEngagedTotal = agg && agg.totalEngagedFromPosts != null;
+  const effectiveEngRate = hasEngagedTotal && reachCur
+    ? (agg.totalEngagedFromPosts / reachCur * 100)
+    : (agg ? agg.engRate : null);
+
   // "Hiệu suất tổng thể" — 6 chỉ số chính, giống bố cục dashboard mẫu.
   const mainCards = [
     { icon: '👁', label: 'Total Views', value: agg ? fmtNum(agg.totalViews) : '—', delta: postCountLabel },
     { icon: '📶', label: 'Reach', value: organicUnavailable ? '—' : fmtNum(reachCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(reachCur, reachPrev)) },
     { icon: '💬', label: 'Engagement', value: organicUnavailable ? '—' : fmtNum(engCur), delta: organicUnavailable ? organicNote : deltaHtml(pctDelta(engCur, engPrev)) },
     { icon: '🖱', label: 'Clicks', value: (agg && agg.totalClicks != null) ? fmtNum(agg.totalClicks) : '—', delta: (agg && agg.totalClicks != null) ? `<span class="delta flat">Trên bài đăng</span>` : apiNote },
-    { icon: '📈', label: 'Eng. Rate', value: (agg && agg.engRate != null) ? agg.engRate.toFixed(1) + '%' : '—', delta: (agg && agg.engRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : apiNote },
+    { icon: '📈', label: 'Eng. Rate', value: (effectiveEngRate != null) ? effectiveEngRate.toFixed(1) + '%' : '—', delta: (effectiveEngRate != null) ? `<span class="delta flat">Engaged / Reach</span>` : apiNote },
     { icon: '📝', label: 'Số bài đăng', value: agg ? fmtNum(agg.postCount) : '—', delta: `<span class="delta flat">Trong ${DISPLAY_RANGE_DAYS} ngày</span>` },
   ];
   document.getElementById('kpiRow').innerHTML = mainCards.map(kpiCardHtml).join('');
@@ -1543,23 +1552,32 @@ function lineChartCard(title, seriesObj, color, subtitle) {
 /* ============================================================
    RENDER — Marketing Funnel & content-type breakdown
    ============================================================ */
-function renderFunnel(agg) {
+function renderFunnel(agg, organicCur) {
   const el = document.getElementById('funnelBox');
   if (!agg || !agg.totalViews) {
     el.innerHTML = `<div class="empty-note">Chưa có đủ dữ liệu bài đăng để tính funnel.</div>`;
     return;
   }
-  // Engaged theo bài đăng hiện chưa có metric nào xác nhận hoạt động qua API (xem ghi chú trong
-  // loadPostsForRange) — nên funnel gồm Views → Reach, và Clicks nếu lấy được.
+  // Reach THEO TỪNG BÀI vẫn chưa có qua API (post_total_media_view_unique luôn = 0, xem ghi chú
+  // trong loadPostsForRange) — nên funnel dùng Reach TỔNG CẤP TRANG (organicCur, cùng nguồn với ô
+  // KPI "Reach" bên trên) làm bước Reach, thay vì tổng reach-theo-bài (agg.totalReachFromPosts).
+  // Engaged giờ đã lấy được thật theo từng bài (reactions+comments+shares) nên được thêm vào funnel.
+  const reachAvailable = organicCur && !organicCur.error;
+  const reachForFunnel = reachAvailable ? seriesTotal(organicCur.reach) : agg.totalReachFromPosts;
   const steps = [
     { label: 'Views', value: agg.totalViews },
-    { label: 'Reach', value: agg.totalReachFromPosts },
+    { label: 'Reach', value: reachForFunnel },
   ];
+  if (agg.totalEngagedFromPosts != null) steps.push({ label: 'Engaged', value: agg.totalEngagedFromPosts });
   if (agg.totalClicks != null) steps.push({ label: 'Clicks', value: agg.totalClicks });
   const max = steps[0].value || 1;
-  const note = agg.totalClicks == null
-    ? `<div class="empty-note" style="margin-top:6px;">Clicks &amp; Engaged theo bài đăng: một phần chưa có qua Facebook API.</div>`
-    : `<div class="empty-note" style="margin-top:6px;">Engaged theo bài đăng hiện chưa có qua Facebook API.</div>`;
+  const missing = [];
+  if (!reachAvailable) missing.push('Reach cấp Trang');
+  if (agg.totalEngagedFromPosts == null) missing.push('Engaged theo bài');
+  if (agg.totalClicks == null) missing.push('Clicks theo bài');
+  const note = missing.length
+    ? `<div class="empty-note" style="margin-top:6px;">${missing.join(', ')}: chưa có qua Facebook API.</div>`
+    : '';
   el.innerHTML = steps.map(s => {
     const pct = max ? (s.value / max * 100) : 0;
     const widthPct = Math.max(4, Math.min(100, pct));
