@@ -433,8 +433,9 @@
 <div id="pending" class="auth-card" hidden style="text-align:center;">
   <h1>Chưa được cấp quyền truy cập</h1>
   <p class="sub">Tài khoản của bạn đã đăng nhập thành công, nhưng hiện chưa có quyền xem dashboard này (có thể do chưa từng được cấp, hoặc quyền đã bị thu hồi trước đó).</p>
-  <p style="font-size:13px;">Gửi email dưới đây cho Admin để được cấp (hoặc cấp lại) quyền:</p>
+  <p style="font-size:13px;">Gửi email và mã UID dưới đây cho Admin để được cấp (hoặc cấp lại) quyền:</p>
   <p style="font-size:15px;font-weight:700;"><span id="pendingEmail"></span></p>
+  <p style="font-size:11.5px;color:var(--muted);">UID: <span id="pendingUid" style="font-family:monospace;user-select:all;"></span></p>
   <button class="btn secondary" onclick="doLogout()" style="margin-top:12px;">Đăng xuất</button>
 </div>
 
@@ -730,6 +731,32 @@
       <div id="addUserMsg" class="msg-box"></div>
     </div>
 
+    <div class="section-title">Cấp quyền cho tài khoản Firebase có sẵn (báo lỗi "Email đã có tài khoản")</div>
+    <div class="table-card card-3d" style="margin-bottom:18px;max-width:480px;">
+      <div class="hint" style="margin-bottom:10px;">Dùng khi thêm người dùng ở trên báo lỗi "Email này đã có tài khoản rồi" — nghĩa là họ đã có tài khoản Firebase từ trước (ví dụ đã từng bị thu hồi quyền kiểu cũ). Nhờ họ đăng nhập thử 1 lần bằng email + mật khẩu cũ của họ; họ sẽ thấy mã UID ở màn hình "Chưa được cấp quyền truy cập" — nhờ họ gửi mã đó cho bạn rồi dán vào đây.</div>
+      <div class="field">
+        <label for="grantUidName">Họ tên</label>
+        <input id="grantUidName" type="text" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="field">
+        <label for="grantUidEmail">Email</label>
+        <input id="grantUidEmail" type="email" placeholder="email-cua-ho@congty.com">
+      </div>
+      <div class="field">
+        <label for="grantUidUid">UID (họ gửi từ màn hình "Chưa được cấp quyền")</label>
+        <input id="grantUidUid" type="text" placeholder="vd: aB3dEfGh12...">
+      </div>
+      <div class="field">
+        <label for="grantUidRole">Vai trò</label>
+        <select id="grantUidRole">
+          <option value="viewer" selected>Xem</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="btn" onclick="grantByUid()">Cấp quyền</button>
+      <div id="grantUidMsg" class="msg-box"></div>
+    </div>
+
     <div class="section-title">Danh sách người dùng</div>
     <div class="table-card card-3d">
       <div id="usersTable"></div>
@@ -952,6 +979,7 @@ auth.onAuthStateChanged(async (user) => {
     const data = doc.exists ? doc.data() : { pendingApproval: true, email: user.email, name: user.email };
     if (data.pendingApproval || data.revoked) {
       document.getElementById('pendingEmail').textContent = user.email;
+      document.getElementById('pendingUid').textContent = user.uid;
       showScreen('pending');
       showLoading(false);
       return;
@@ -1124,6 +1152,31 @@ async function addUser() {
     loadUsersList();
   } catch (e) {
     setMsg('addUserMsg', 'Lỗi tạo tài khoản: ' + translateAuthError(e.code), 'err');
+  }
+}
+
+// Cấp quyền cho một tài khoản Firebase Auth đã có sẵn (không tạo được qua addUser() vì email đã
+// tồn tại — ví dụ đã từng bị thu hồi kiểu cũ). Ghi thẳng bằng quyền của Admin đang đăng nhập, không
+// phụ thuộc vào việc user tự ghi được hồ sơ "chờ duyệt" của chính họ hay không.
+async function grantByUid() {
+  const name = document.getElementById('grantUidName').value.trim();
+  const email = document.getElementById('grantUidEmail').value.trim();
+  const uid = document.getElementById('grantUidUid').value.trim();
+  const role = document.getElementById('grantUidRole').value;
+  if (!uid || !email) {
+    setMsg('grantUidMsg', 'Nhập đủ Email và UID.', 'err');
+    return;
+  }
+  setMsg('grantUidMsg', 'Đang cấp quyền…', '');
+  try {
+    await db.collection('users').doc(uid).set({ email, name: name || email, role, pendingApproval: false, revoked: false });
+    setMsg('grantUidMsg', `Đã cấp quyền ${role === 'admin' ? 'Admin' : 'Xem'} cho ${email}. Họ tải lại trang (hoặc đăng xuất rồi đăng nhập lại) là vào được dashboard.`, 'ok');
+    document.getElementById('grantUidName').value = '';
+    document.getElementById('grantUidEmail').value = '';
+    document.getElementById('grantUidUid').value = '';
+    loadUsersList();
+  } catch (e) {
+    setMsg('grantUidMsg', 'Lỗi cấp quyền: ' + e.message, 'err');
   }
 }
 
